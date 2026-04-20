@@ -90,7 +90,8 @@ export default function App() {
   );
 }
 
-function NavBtn({ label, icon: Icon, active, onClick, disabled }) {
+function NavBtn({ label, icon, active, onClick, disabled }) {
+  const IconComponent = icon;
   return (
     <button
       onClick={onClick}
@@ -101,7 +102,7 @@ function NavBtn({ label, icon: Icon, active, onClick, disabled }) {
         !disabled ? 'active:bg-green-50' : '',
       ].join(' ')}
     >
-      <Icon active={active} disabled={disabled} />
+      <IconComponent active={active} disabled={disabled} />
       <span className="text-xs font-medium">{label}</span>
     </button>
   );
