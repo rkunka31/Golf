@@ -16,6 +16,9 @@ export default function NewRound({ onSave, onCancel }) {
   const [date, setDate] = useState(todayISO());
   const [tees, setTees] = useState('blue');
   const [conditions, setConditions] = useState('');
+  const [notes, setNotes] = useState('');
+  const [courseRating, setCourseRating] = useState('');
+  const [slope, setSlope] = useState('');
 
   const handleSave = () => {
     const round = {
@@ -24,6 +27,9 @@ export default function NewRound({ onSave, onCancel }) {
       date,
       tees,
       conditions: conditions.trim(),
+      notes: notes.trim(),
+      courseRating: courseRating ? Number(courseRating) : null,
+      slope: slope ? Number(slope) : null,
       holes: createEmptyHoles(),
     };
     onSave(round);

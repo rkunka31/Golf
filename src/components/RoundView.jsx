@@ -1,4 +1,6 @@
+import { useState, useRef } from 'react';
 import HoleView from './HoleView';
+import ShareCard from './ShareCard';
 
 const TEE_BADGE = {
   gold: 'bg-yellow-400 text-yellow-900',
@@ -7,7 +9,10 @@ const TEE_BADGE = {
   white: 'bg-white text-gray-700 border border-gray-300',
 };
 
-export default function RoundView({ round, activeHole, setActiveHole, updateHole, onBack }) {
+export default function RoundView({ round, activeHole, setActiveHole, updateHole, onBack, onUpdateNotes }) {
+  const [showNotes, setShowNotes] = useState(false);
+  const [notesText, setNotesText] = useState(round.notes || '');
+  const [showShare, setShowShare] = useState(false);
   const hole = round.holes.find((h) => h.holeNumber === activeHole);
 
   const totalScore = round.holes.reduce((sum, h) => {
@@ -42,13 +47,24 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
             </div>
             <p className="text-green-300 text-xs">{formatDate(round.date)}{round.conditions ? ` · ${round.conditions}` : ''}</p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-2xl font-bold">{holesPlayed > 0 ? totalScore : '—'}</div>
-            {holesPlayed > 0 && (
-              <div className={`text-xs font-semibold ${scoreDiff > 0 ? 'text-red-300' : scoreDiff < 0 ? 'text-green-300' : 'text-gray-300'}`}>
-                {scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff === 0 ? 'E' : scoreDiff}
-              </div>
-            )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowShare(true)}
+              className="p-2 rounded-full active:bg-green-700 transition-colors"
+              title="Share round"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
+            <div className="text-right">
+              <div className="text-2xl font-bold">{holesPlayed > 0 ? totalScore : '—'}</div>
+              {holesPlayed > 0 && (
+                <div className={`text-xs font-semibold ${scoreDiff > 0 ? 'text-red-300' : scoreDiff < 0 ? 'text-green-300' : 'text-gray-300'}`}>
+                  {scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff === 0 ? 'E' : scoreDiff}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -79,6 +95,12 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
               </button>
             );
           })}
+          <button
+            onClick={() => { setNotesText(round.notes || ''); setShowNotes(true); }}
+            className="flex-shrink-0 w-16 h-9 rounded-lg flex items-center justify-center text-xs font-bold bg-gray-600 text-white ml-1"
+          >
+            Notes
+          </button>
         </div>
       </div>
 
@@ -92,6 +114,57 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
           hasPrev={activeHole > 1}
           hasNext={activeHole < 18}
         />
+      )}
+
+      {/* Notes Modal */}
+      {showNotes && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShowNotes(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full bg-white rounded-t-2xl p-5 pb-8 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 text-base">Round Notes</h3>
+              <button onClick={() => setShowNotes(false)} className="text-gray-400 p-1">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <textarea
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value)}
+              placeholder="Goals, reminders, observations..."
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            />
+            <button
+              onClick={() => {
+                onUpdateNotes && onUpdateNotes(notesText);
+                setShowNotes(false);
+              }}
+              className="mt-3 w-full py-3 rounded-xl bg-green-700 text-white font-semibold text-sm active:bg-green-800"
+            >
+              Save Notes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Card Modal */}
+      {showShare && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShowShare(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full bg-white rounded-t-2xl p-5 pb-8 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 text-base">Share Round</h3>
+              <button onClick={() => setShowShare(false)} className="text-gray-400 p-1">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ShareCard round={round} onClose={() => setShowShare(false)} />
+          </div>
+        </div>
       )}
     </div>
   );

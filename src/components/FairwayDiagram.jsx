@@ -1,6 +1,15 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { generateId } from '../utils/uuid';
 
+const SHAPES = ['Straight', 'Draw', 'Fade', 'Hook', 'Slice'];
+const SHAPE_COLORS = {
+  Straight: '#6b7280',
+  Draw: '#2563eb',
+  Fade: '#d97706',
+  Hook: '#dc2626',
+  Slice: '#7c3aed',
+};
+
 // ViewBox: wide enough to fill screen, tall for usability
 const W = 100;
 const H = 230;
@@ -70,6 +79,10 @@ function ShotPin({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
       {/* shot number */}
       <text x={0} y={-7} textAnchor="middle" fontSize="3.2" fontWeight="700"
         fill="white" style={{ pointerEvents: 'none' }}>{shot.shotNumber}</text>
+      {/* shape dot below pin tip */}
+      {shot.shape && SHAPE_COLORS[shot.shape] && (
+        <circle cx={0} cy={3} r={2} fill={SHAPE_COLORS[shot.shape]} style={{ pointerEvents: 'none' }} />
+      )}
       {/* delete button */}
       {!readOnly && (
         <g transform="translate(5.5,-16.5)" onClick={onDelete}
@@ -90,6 +103,17 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
   const [showSummary, setShowSummary] = useState(false);
   const shotsRef = useRef(shots);
   useEffect(() => { shotsRef.current = shots; }, [shots]);
+
+  const setLastShotShape = useCallback((shape) => {
+    const cur = shotsRef.current;
+    if (!cur.length) return;
+    const maxNum = Math.max(...cur.map(s => s.shotNumber));
+    onShotsChange(cur.map(s => s.shotNumber === maxNum ? { ...s, shape } : s));
+  }, [onShotsChange]);
+
+  const lastShot = shots.length > 0
+    ? [...shots].sort((a, b) => b.shotNumber - a.shotNumber)[0]
+    : null;
 
   // ── drag existing marker ──
   const handleMarkerDown = useCallback((e, id) => {
@@ -177,6 +201,21 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
               <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* ── shape selector row ── */}
+      {!readOnly && shots.length > 0 && (
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 overflow-x-auto">
+          <span className="text-gray-400 text-xs flex-shrink-0">Shape:</span>
+          {SHAPES.map(shape => (
+            <button key={shape}
+              onClick={() => setLastShotShape(shape)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 transition-colors
+                ${lastShot?.shape === shape ? 'text-white' : 'bg-gray-700 text-gray-400'}`}
+              style={lastShot?.shape === shape ? { backgroundColor: SHAPE_COLORS[shape] } : {}}
+            >{shape}</button>
+          ))}
         </div>
       )}
 

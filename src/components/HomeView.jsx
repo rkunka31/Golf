@@ -1,5 +1,69 @@
 import { useState } from 'react';
 
+function ScoreTrend({ rounds }) {
+  const withScores = rounds
+    .map(r => {
+      const scored = r.holes.filter(h => h.score !== null && h.score !== undefined && h.score !== '');
+      if (scored.length < 18) return null;
+      const total = scored.reduce((s, h) => s + Number(h.score), 0);
+      return { date: r.date, total };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-8);
+
+  if (withScores.length < 2) return null;
+
+  const scores = withScores.map(r => r.total);
+  const minScore = Math.min(...scores);
+  const maxScore = Math.max(...scores);
+  const range = maxScore - minScore || 1;
+
+  const W = 300;
+  const H = 48;
+  const PAD = 12;
+  const chartW = W - PAD * 2;
+  const chartH = H - 16;
+
+  const pts = scores.map((s, i) => {
+    const x = PAD + (i / (scores.length - 1)) * chartW;
+    // Inverted: lower score = higher on chart
+    const y = 8 + ((s - minScore) / range) * chartH;
+    // Invert y so lower score is higher
+    const yInv = 8 + chartH - ((s - minScore) / range) * chartH;
+    return { x, y: yInv, score: s };
+  });
+
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const bestScore = minScore;
+  const latestScore = scores[scores.length - 1];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 pt-3 pb-4 mb-6">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-gray-700">Score Trend</span>
+        <span className="text-xs text-gray-400">Last {scores.length} rounds</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: 60 }}>
+        <polyline points={polyline} fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map((p, i) => {
+          const isLast = i === pts.length - 1;
+          return (
+            <g key={i}>
+              <text x={p.x} y={p.y - 5} textAnchor="middle" fontSize="5.5" fill="#374151" fontWeight="600">{p.score}</text>
+              <circle cx={p.x} cy={p.y} r={isLast ? 4 : 3} fill="#15803d" stroke="white" strokeWidth="1.2" />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex gap-2 mt-2">
+        <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Best: {bestScore}</span>
+        <span className="px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold">Latest: {latestScore}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRound }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -46,6 +110,9 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
           </svg>
           Start New Round
         </button>
+
+        {/* Score Trend Sparkline */}
+        <ScoreTrend rounds={sorted} />
 
         {/* Rounds List */}
         {sorted.length === 0 ? (
