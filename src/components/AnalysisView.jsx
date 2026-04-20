@@ -107,9 +107,9 @@ export default function AnalysisView({ rounds }) {
   if (rounds.length === 0) {
     return (
       <div className="min-h-full">
-        <div className="bg-green-800 text-white px-4 pt-10 pb-6">
+        <div className="bg-gray-900 text-white px-4 pt-10 pb-6">
           <h1 className="text-2xl font-bold">Analysis</h1>
-          <p className="text-green-300 text-sm mt-1">Stats &amp; shot patterns</p>
+          <p className="text-gray-400 text-sm mt-1">Stats &amp; shot patterns</p>
         </div>
         <div className="text-center py-20 text-gray-400 px-4">
           <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,9 +125,9 @@ export default function AnalysisView({ rounds }) {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="bg-green-800 text-white px-4 pt-10 pb-6">
+      <div className="bg-gray-900 text-white px-4 pt-10 pb-6">
         <h1 className="text-2xl font-bold">Analysis</h1>
-        <p className="text-green-300 text-sm mt-1">Stats &amp; shot patterns</p>
+        <p className="text-gray-400 text-sm mt-1">Stats &amp; shot patterns</p>
       </div>
 
       <div className="px-4 py-4 space-y-4">

@@ -10,9 +10,9 @@ const SHAPE_COLORS = {
   Slice: '#7c3aed',
 };
 
-// ViewBox: wide enough to fill screen, tall for usability
+// ViewBox: wide enough to fill screen, tall for usability (extra bottom space for TEE label)
 const W = 100;
-const H = 230;
+const H = 240;
 
 // Oval bounds — wide (nearly full width) and tall
 const OVL_CX = 50;
@@ -57,41 +57,40 @@ function GolfBallIcon({ size = 30 }) {
   );
 }
 
-// Small teardrop pin — white fill, blue border while dragging
+// Small teardrop pin — white fill, blue border while dragging; black dot in readOnly
 function ShotPin({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
+  if (readOnly) {
+    return (
+      <g transform={`translate(${shot.x},${shot.y})`}>
+        <circle r={1.8} fill="#111827" opacity={0.72} />
+      </g>
+    );
+  }
   const stroke = isDragging ? '#2563eb' : '#374151';
   const fill   = isDragging ? '#dbeafe' : 'white';
   return (
     <g transform={`translate(${shot.x},${shot.y})`}>
-      {/* soft shadow */}
-      <ellipse cx={0.5} cy={0.5} rx={4} ry={1.8} fill="rgba(0,0,0,0.18)" />
-      {/* teardrop body: tip at (0,0), head at (0,-10) */}
+      <ellipse cx={0.4} cy={0.4} rx={2.5} ry={1.3} fill="rgba(0,0,0,0.18)" />
       <path
-        d="M 0 0 C -3.5 -3, -5 -6, -5 -9 C -5 -13, -2.5 -16, 0 -16 C 2.5 -16, 5 -13, 5 -9 C 5 -6, 3.5 -3, 0 0 Z"
+        d="M 0 0 C -2.45 -2.1, -3.5 -4.2, -3.5 -6.3 C -3.5 -9.1, -1.75 -11.2, 0 -11.2 C 1.75 -11.2, 3.5 -9.1, 3.5 -6.3 C 3.5 -4.2, 2.45 -2.1, 0 0 Z"
         fill={fill}
         stroke={stroke}
-        strokeWidth="1.2"
-        onPointerDown={readOnly ? undefined : onPointerDown}
-        style={{ cursor: readOnly ? 'default' : 'grab' }}
+        strokeWidth="1.0"
+        onPointerDown={onPointerDown}
+        style={{ cursor: 'grab' }}
       />
-      {/* inner circle */}
-      <circle cx={0} cy={-9} r={3} fill={stroke} style={{ pointerEvents: 'none' }} />
-      {/* shot number */}
-      <text x={0} y={-7} textAnchor="middle" fontSize="3.2" fontWeight="700"
+      <circle cx={0} cy={-6.3} r={2.1} fill={stroke} style={{ pointerEvents: 'none' }} />
+      <text x={0} y={-5} textAnchor="middle" fontSize="2.5" fontWeight="700"
         fill="white" style={{ pointerEvents: 'none' }}>{shot.shotNumber}</text>
-      {/* shape dot below pin tip */}
       {shot.shape && SHAPE_COLORS[shot.shape] && (
-        <circle cx={0} cy={3} r={2} fill={SHAPE_COLORS[shot.shape]} style={{ pointerEvents: 'none' }} />
+        <circle cx={0} cy={2.5} r={1.5} fill={SHAPE_COLORS[shot.shape]} style={{ pointerEvents: 'none' }} />
       )}
-      {/* delete button */}
-      {!readOnly && (
-        <g transform="translate(5.5,-16.5)" onClick={onDelete}
-          onPointerDown={(e) => e.stopPropagation()} style={{ cursor: 'pointer' }}>
-          <circle cx={0} cy={0} r={3.2} fill="#ef4444" stroke="white" strokeWidth="0.7" />
-          <line x1={-1.5} y1={-1.5} x2={1.5} y2={1.5} stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-          <line x1={1.5} y1={-1.5} x2={-1.5} y2={1.5} stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-        </g>
-      )}
+      <g transform="translate(3.8,-11.5)" onClick={onDelete}
+        onPointerDown={(e) => e.stopPropagation()} style={{ cursor: 'pointer' }}>
+        <circle cx={0} cy={0} r={2.3} fill="#ef4444" stroke="white" strokeWidth="0.7" />
+        <line x1={-1.1} y1={-1.1} x2={1.1} y2={1.1} stroke="white" strokeWidth="1.0" strokeLinecap="round"/>
+        <line x1={1.1} y1={-1.1} x2={-1.1} y2={1.1} stroke="white" strokeWidth="1.0" strokeLinecap="round"/>
+      </g>
     </g>
   );
 }
@@ -238,9 +237,18 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
         {/* white background */}
         <rect x="0" y="0" width={W} height={H} fill="#f8f9fb"/>
 
-        {/* oval: light grey fill */}
+        {/* rough collar — fills area outside fairway oval */}
+        <ellipse cx={OVL_CX} cy={OVL_CY} rx={51} ry={120} fill="#3a5228"/>
+
+        {/* GREEN / TEE labels in rough area, outside fairway oval */}
+        <text x={OVL_CX} y={3.8} textAnchor="middle"
+          fontSize="3" fill="white" fontWeight="700" letterSpacing="0.3">▲ GREEN</text>
+        <text x={OVL_CX} y={233} textAnchor="middle"
+          fontSize="3" fill="white" fontWeight="700" letterSpacing="0.3">TEE ▼</text>
+
+        {/* oval: light grey fairway fill */}
         <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
-          fill="#f0f1f3" filter="url(#card-shadow)"/>
+          fill="#f0f1f3"/>
 
         {/* hatch fill inside oval */}
         <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
@@ -268,14 +276,6 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
             </g>
           );
         })}
-
-        {/* GREEN label at top */}
-        <text x={OVL_CX} y={OVL_CY - OVL_RY + 10} textAnchor="middle"
-          fontSize="4.5" fill="#15803d" fontWeight="800" letterSpacing="0.3">▲ GREEN</text>
-
-        {/* TEE label at bottom */}
-        <text x={OVL_CX} y={OVL_CY + OVL_RY - 3} textAnchor="middle"
-          fontSize="4.5" fill="#374151" fontWeight="800" letterSpacing="0.3">TEE ▼</text>
 
         {/* zone labels */}
         {[['L', OVL_CX - OVL_RX * 0.55], ['C', OVL_CX], ['R', OVL_CX + OVL_RX * 0.55]].map(([lbl, x]) => (
