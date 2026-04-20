@@ -1,0 +1,18 @@
+{
+  "name": "Golf Shot Tracker",
+  "short_name": "Golf Tracker",
+  "description": "Track your golf shots, scores, and improve your game",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f4f0",
+  "theme_color": "#166534",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
