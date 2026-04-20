@@ -1,10 +1,20 @@
 import { useState, useMemo } from 'react';
 import FairwayDiagram from './FairwayDiagram';
 import GreenDiagram from './GreenDiagram';
+import { calcRoundSG } from '../utils/strokesGained';
+
+// Fairway diagram constants (mirrored from FairwayDiagram)
+const FW_MARKER_YS = [10, 48, 86, 124, 162, 200];
+
+// Green diagram constants
+const GREEN_CX = 50;
+const GREEN_CY = 50;
 
 export default function AnalysisView({ rounds }) {
   const [selectedRound, setSelectedRound] = useState('all');
   const [selectedHole, setSelectedHole] = useState('all');
+  const [fairwayViewMode, setFairwayViewMode] = useState('realistic'); // 'realistic' | 'dispersion'
+  const [greenViewMode, setGreenViewMode] = useState('realistic');     // 'realistic' | 'dispersion'
 
   // Build rounds options
   const roundOptions = [
@@ -58,6 +68,18 @@ export default function AnalysisView({ rounds }) {
       holesPlayed: scored.length,
     };
   }, [filteredHoles]);
+
+  // Strokes Gained
+  const sgData = useMemo(() => calcRoundSG(filteredHoles), [filteredHoles]);
+
+  const formatSG = (val) => {
+    if (val === null || val === undefined) return '—';
+    const fixed = val.toFixed(1);
+    return val >= 0 ? `+${fixed}` : fixed;
+  };
+
+  const sgPuttColor = sgData.sgPutt === null ? 'gray' : sgData.sgPutt >= 0 ? 'sgPositive' : 'sgNegative';
+  const sgAppColor = sgData.sgApp === null ? 'gray' : sgData.sgApp >= 0 ? 'sgPositive' : 'sgNegative';
 
   // Aggregate shots with hole label
   const allFairwayShots = useMemo(() => {
@@ -151,6 +173,8 @@ export default function AnalysisView({ rounds }) {
             <StatCard label="Avg Putts" value={stats.avgPutts} color="blue" />
             <StatCard label="Fairways Hit" value={stats.fwHit} color="yellow" />
             <StatCard label="GIR %" value={stats.girPct} color="purple" />
+            <StatCard label="SG: Putt" value={formatSG(sgData.sgPutt)} color={sgPuttColor} />
+            <StatCard label="SG: Approach" value={formatSG(sgData.sgApp)} color={sgAppColor} />
           </div>
         </div>
 
@@ -158,10 +182,22 @@ export default function AnalysisView({ rounds }) {
         {allFairwayShots.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-700">Fairway Shot Map</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Numbers indicate hole. Read-only.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Fairway Shot Map</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Numbers indicate hole. Read-only.</p>
+                </div>
+                <ViewToggle
+                  mode={fairwayViewMode}
+                  onChange={setFairwayViewMode}
+                />
+              </div>
             </div>
-            <FairwayDiagram shots={allFairwayShots} onShotsChange={noop} readOnly />
+            {fairwayViewMode === 'realistic' ? (
+              <FairwayDiagram shots={allFairwayShots} onShotsChange={noop} readOnly />
+            ) : (
+              <FairwayDispersion shots={allFairwayShots} />
+            )}
           </div>
         )}
 
@@ -169,10 +205,22 @@ export default function AnalysisView({ rounds }) {
         {allGreenShots.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-700">Green Shot Map</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Numbers indicate hole. Read-only.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700">Green Shot Map</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Numbers indicate hole. Read-only.</p>
+                </div>
+                <ViewToggle
+                  mode={greenViewMode}
+                  onChange={setGreenViewMode}
+                />
+              </div>
             </div>
-            <GreenDiagram shots={allGreenShots} onShotsChange={noop} readOnly />
+            {greenViewMode === 'realistic' ? (
+              <GreenDiagram shots={allGreenShots} onShotsChange={noop} readOnly />
+            ) : (
+              <GreenDispersion shots={allGreenShots} />
+            )}
           </div>
         )}
 
@@ -195,12 +243,126 @@ export default function AnalysisView({ rounds }) {
   );
 }
 
+// ---- View toggle component ----
+function ViewToggle({ mode, onChange }) {
+  return (
+    <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs font-semibold">
+      <button
+        onClick={() => onChange('realistic')}
+        className={`px-2.5 py-1 transition-colors ${mode === 'realistic' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 active:bg-gray-100'}`}
+      >
+        Realistic
+      </button>
+      <button
+        onClick={() => onChange('dispersion')}
+        className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${mode === 'dispersion' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 active:bg-gray-100'}`}
+      >
+        Dispersion
+      </button>
+    </div>
+  );
+}
+
+// ---- Fairway Dispersion ----
+function FairwayDispersion({ shots }) {
+  function dotColor(shot) {
+    const dev = Math.abs(shot.x - 50);
+    if (dev <= 8) return '#4ade80';
+    if (dev <= 18) return '#fb923c';
+    return '#ef4444';
+  }
+
+  return (
+    <div>
+      <svg viewBox="0 0 100 210" className="w-full" style={{ maxHeight: 420, display: 'block' }}>
+        {/* Dark background */}
+        <rect x="0" y="0" width="100" height="210" fill="#1c2b1c" />
+
+        {/* Vertical center dashed line */}
+        <line x1="50" y1="5" x2="50" y2="205"
+          stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" strokeDasharray="3,3" />
+
+        {/* Horizontal distance lines */}
+        {FW_MARKER_YS.map((y) => (
+          <line key={y} x1="0" y1={y} x2="100" y2={y}
+            stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+        ))}
+
+        {/* Shot dots */}
+        {shots.map((shot) => (
+          <g key={shot.id}>
+            <circle cx={shot.x} cy={shot.y} r={3.5} fill={dotColor(shot)} opacity={0.85} />
+            <text x={shot.x + 5} y={shot.y + 1.5}
+              fontSize="3.5" fill="white" textAnchor="start"
+              stroke="black" strokeWidth="0.2" paintOrder="stroke">
+              {shot.shotNumber}
+            </text>
+          </g>
+        ))}
+
+        {/* Title */}
+        <text x="50" y="208" textAnchor="middle" fontSize="4" fill="rgba(255,255,255,0.5)">
+          Fairway Dispersion
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ---- Green Dispersion ----
+function GreenDispersion({ shots }) {
+  function dotColor(shot) {
+    const dx = shot.x - 50;
+    const dy = shot.y - 50;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= 15) return '#4ade80';
+    if (dist <= 29) return '#fb923c';
+    return '#ef4444';
+  }
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <svg viewBox="0 0 100 100" className="w-full" style={{ maxWidth: 320, maxHeight: 320, display: 'block' }}>
+        {/* Dark background */}
+        <rect x="0" y="0" width="100" height="100" fill="#1c2b1c" />
+
+        {/* Crosshair */}
+        <line x1="50" y1="0" x2="50" y2="100"
+          stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+        <line x1="0" y1="50" x2="100" y2="50"
+          stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+
+        {/* Reference circles */}
+        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
+        <circle cx="50" cy="50" r="29" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
+        <circle cx="50" cy="50" r="15" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
+
+        {/* Shot dots */}
+        {shots.map((shot) => (
+          <g key={shot.id}>
+            <circle cx={shot.x} cy={shot.y} r={3.5} fill={dotColor(shot)} opacity={0.85} />
+            <text x={shot.x + 5} y={shot.y + 1.5}
+              fontSize="3.5" fill="white" textAnchor="start"
+              stroke="black" strokeWidth="0.2" paintOrder="stroke">
+              {shot.shotNumber}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ---- Stat Card ----
 function StatCard({ label, value, color }) {
   const colorMap = {
     green: 'text-green-700',
     blue: 'text-blue-600',
     yellow: 'text-yellow-600',
     purple: 'text-purple-600',
+    gray: 'text-gray-500',
+    sgPositive: 'text-green-600',
+    sgNegative: 'text-red-500',
   };
   return (
     <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
