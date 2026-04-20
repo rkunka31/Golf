@@ -1,8 +1,4 @@
-const CLUBS = [
-  'Driver', '3W', '5W', '3H', '4H',
-  '5i', '6i', '7i', '8i', '9i',
-  'PW', 'GW', 'SW', 'LW', 'Putter',
-];
+const CLUBS = ['Dr', '3W', '2H', '4i', '5i', '6i', '7i', '8i', '9i', 'PW', '50°', '54°'];
 
 export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasNext }) {
   const set = (field, value) => onUpdate((h) => ({ ...h, [field]: value }));
@@ -19,6 +15,11 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
   const displayScore = hole.score !== null && hole.score !== '' ? hole.score : '';
 
   const scoreDiff = displayScore !== '' ? Number(displayScore) - hole.par : null;
+
+  const handleClubSelect = (club) => {
+    // Tapping selected club deselects it
+    set('club', hole.club === club ? '' : club);
+  };
 
   return (
     <div className="bg-white border-b border-gray-100 px-3 pt-3 pb-3">
@@ -166,19 +167,28 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
           />
         </div>
 
-        {/* Club Used - full width */}
+        {/* Club Used - horizontal scrollable button row */}
         <div className="col-span-2 bg-gray-50 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Club Used</label>
-          <select
-            value={hole.club || ''}
-            onChange={(e) => set('club', e.target.value)}
-            className="w-full py-2 px-3 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-400"
+          <div
+            style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+            className="flex gap-1.5 pb-1"
           >
-            <option value="">— Select Club —</option>
-            {CLUBS.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {CLUBS.map((club) => (
+              <button
+                key={club}
+                onClick={() => handleClubSelect(club)}
+                className={[
+                  'px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 transition-colors',
+                  hole.club === club
+                    ? 'bg-green-700 text-white'
+                    : 'bg-white border border-gray-200 text-gray-600 active:bg-green-50',
+                ].join(' ')}
+              >
+                {club}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       </div>
     </div>

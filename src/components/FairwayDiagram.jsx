@@ -1,58 +1,94 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { generateId } from '../utils/uuid';
 
-// Distance markers along the fairway (yards from tee)
-const DISTANCE_MARKERS = [300, 250, 200, 150, 100, 50];
+// SVG viewBox dimensions
+const W = 100;
+const H = 210;
 
-// The oval fairway occupies the middle ~50% horizontally
-const FAIRWAY_LEFT = 0.25;
-const FAIRWAY_RIGHT = 0.75;
+// Fairway pill: x=27 to x=73, y=8 to y=202
+const FW_LEFT = 27;
+const FW_RIGHT = 73;
+const FW_TOP = 8;
+const FW_BOTTOM = 202;
+const FW_W = FW_RIGHT - FW_LEFT; // 46
+const FW_RX = FW_W / 2; // 23 — corner radius for pill
+
+// Distance marker y positions and labels
+const MARKER_YS = [10, 48, 86, 124, 162, 200];
+const MARKER_LABELS = [300, 250, 200, 150, 100, 50];
+
+// Yard span and Y span for distance calculation
+const Y_SPAN = FW_BOTTOM - FW_TOP; // 194
+const YARD_SPAN = 250;
+
+function getSvgCoords(svg, clientX, clientY) {
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: 50, y: 105 };
+  return pt.matrixTransform(ctm.inverse());
+}
+
+function GolfBallIcon({ size = 32 }) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 1;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r} fill="white" stroke="#d1d5db" strokeWidth="1" />
+      {/* Dimples */}
+      {[
+        [cx - 5, cy - 5], [cx + 5, cy - 5],
+        [cx - 8, cy], [cx, cy], [cx + 8, cy],
+        [cx - 5, cy + 5], [cx + 5, cy + 5],
+      ].map(([dx, dy], i) => (
+        <circle key={i} cx={dx} cy={dy} r={1.5} fill="rgba(0,0,0,0.1)" />
+      ))}
+    </svg>
+  );
+}
+
+function fairwayPillPath() {
+  const rx = FW_RX;
+  const x = FW_LEFT;
+  const y = FW_TOP;
+  const w = FW_W;
+  const h = FW_BOTTOM - FW_TOP;
+  return [
+    `M ${x + rx} ${y}`,
+    `L ${x + w - rx} ${y}`,
+    `Q ${x + w} ${y} ${x + w} ${y + rx}`,
+    `L ${x + w} ${y + h - rx}`,
+    `Q ${x + w} ${y + h} ${x + w - rx} ${y + h}`,
+    `L ${x + rx} ${y + h}`,
+    `Q ${x} ${y + h} ${x} ${y + h - rx}`,
+    `L ${x} ${y + rx}`,
+    `Q ${x} ${y} ${x + rx} ${y}`,
+    `Z`,
+  ].join(' ');
+}
 
 export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(null);
-  // Keep a live ref so drag callbacks always have current shots
+  const [ghost, setGhost] = useState(null); // { x, y } in client coords
+
+  // Keep live ref so drag callbacks always have current shots
   const shotsRef = useRef(shots);
   useEffect(() => { shotsRef.current = shots; }, [shots]);
 
-  const getSvgPoint = (clientX, clientY) => {
-    const svg = svgRef.current;
-    if (!svg) return { x: 50, y: 100 };
-    const rect = svg.getBoundingClientRect();
-    return {
-      x: ((clientX - rect.left) / rect.width) * 100,
-      y: ((clientY - rect.top) / rect.height) * 100,
-    };
-  };
-
-  // ---- Background tap/click to add shot ----
-  const handleBgClick = (e) => {
-    if (readOnly) return;
-    // Only fire on background elements
-    if (e.target !== svgRef.current && e.target.dataset.bg !== 'true') return;
-    const pt = getSvgPoint(e.clientX, e.clientY);
-    const current = shotsRef.current;
-    const newShot = {
-      id: generateId(),
-      x: pt.x,
-      y: pt.y,
-      shotNumber: current.length + 1,
-    };
-    onShotsChange([...current, newShot]);
-  };
-
-  // ---- Drag marker ----
-  const handleMarkerPointerDown = (e, shotId) => {
+  // ---- Drag existing marker ----
+  const handleMarkerPointerDown = useCallback((e, shotId) => {
     if (readOnly) return;
     e.stopPropagation();
     e.preventDefault();
     setDragging(shotId);
 
     const onMove = (me) => {
-      const clientX = me.touches ? me.touches[0].clientX : me.clientX;
-      const clientY = me.touches ? me.touches[0].clientY : me.clientY;
-      const pt = getSvgPoint(clientX, clientY);
-      // Use shotsRef so we always have up-to-date array
+      const svg = svgRef.current;
+      if (!svg) return;
+      const pt = getSvgCoords(svg, me.clientX, me.clientY);
       onShotsChange(
         shotsRef.current.map((s) => s.id === shotId ? { ...s, x: pt.x, y: pt.y } : s)
       );
@@ -60,110 +96,156 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
 
     const onUp = () => {
       setDragging(null);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
     };
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onUp);
-  };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [readOnly, onShotsChange]);
 
-  const handleDelete = (e, shotId) => {
+  const handleDelete = useCallback((e, shotId) => {
     if (readOnly) return;
     e.stopPropagation();
     e.preventDefault();
     onShotsChange(shotsRef.current.filter((s) => s.id !== shotId));
-  };
+  }, [readOnly, onShotsChange]);
 
-  // SVG viewBox: 0 0 100 200
-  const W = 100;
-  const H = 200;
+  // ---- Launcher drag-to-place ----
+  const handleLauncherDown = useCallback((e) => {
+    e.preventDefault();
+    setGhost({ x: e.clientX, y: e.clientY });
 
-  // Fairway oval path (pill/stadium shape)
-  const fw = (FAIRWAY_RIGHT - FAIRWAY_LEFT) * W; // 50
-  const fx = FAIRWAY_LEFT * W; // 25
-  const rx = fw / 2; // corner radius = half width for pill shape
+    const onMove = (me) => {
+      setGhost({ x: me.clientX, y: me.clientY });
+    };
 
-  const fairwayPath = [
-    `M ${fx + rx} 4`,
-    `L ${fx + fw - rx} 4`,
-    `Q ${fx + fw} 4 ${fx + fw} ${4 + rx}`,
-    `L ${fx + fw} ${H - 4 - rx}`,
-    `Q ${fx + fw} ${H - 4} ${fx + fw - rx} ${H - 4}`,
-    `L ${fx + rx} ${H - 4}`,
-    `Q ${fx} ${H - 4} ${fx} ${H - 4 - rx}`,
-    `L ${fx} ${4 + rx}`,
-    `Q ${fx} 4 ${fx + rx} 4`,
-    `Z`,
-  ].join(' ');
+    const onUp = (me) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
 
-  // Distance marker Y positions evenly spaced from top to bottom
-  const markerYs = DISTANCE_MARKERS.map((_, i) =>
-    15 + (i / (DISTANCE_MARKERS.length - 1)) * 170
-  );
+      const svg = svgRef.current;
+      if (svg) {
+        const pt = getSvgCoords(svg, me.clientX, me.clientY);
+        // Place shot only if within fairway Y bounds
+        if (pt.y >= FW_TOP && pt.y <= FW_BOTTOM) {
+          const current = shotsRef.current;
+          const newShot = {
+            id: generateId(),
+            x: pt.x,
+            y: pt.y,
+            shotNumber: current.length + 1,
+          };
+          onShotsChange([...current, newShot]);
+        }
+      }
+      setGhost(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [onShotsChange]);
+
+  // Sort shots by shotNumber for connecting lines
+  const sortedShots = [...shots].sort((a, b) => a.shotNumber - b.shotNumber);
+
+  const pillPath = fairwayPillPath();
 
   return (
-    <div className="relative" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+    <div style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
-        style={{ maxHeight: 340, display: 'block', touchAction: 'none' }}
-        onClick={handleBgClick}
+        style={{ maxHeight: 420, display: 'block', touchAction: 'none' }}
       >
-        {/* Rough/background */}
-        <rect data-bg="true" x="0" y="0" width={W} height={H} fill="#bbf7d0" />
-
-        {/* Rough texture alternating rows */}
-        {Array.from({ length: 20 }).map((_, i) => (
-          <rect key={i} data-bg="true" x={0} y={i * 10} width={W} height={5} fill="rgba(0,100,0,0.07)" />
-        ))}
-
-        {/* Fairway stripe pattern */}
         <defs>
-          <pattern id="fw-stripes" x="0" y="0" width={fw} height="10" patternUnits="userSpaceOnUse" patternTransform={`translate(${fx},0)`}>
-            <rect x="0" y="0" width={fw} height="5" fill="#4ade80" />
-            <rect x="0" y="5" width={fw} height="5" fill="#22c55e" />
+          {/* Fairway stripe pattern */}
+          <pattern id="fw-stripes" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="8" height="4" fill="#3aaa5c" />
+            <rect x="0" y="4" width="8" height="4" fill="#2d8a4e" />
           </pattern>
+
+          {/* Drop shadow filter for fairway */}
+          <filter id="fw-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="1" dy="2" stdDeviation="2" floodColor="rgba(0,0,0,0.35)" />
+          </filter>
         </defs>
 
-        {/* Fairway fill */}
-        <path d={fairwayPath} fill="url(#fw-stripes)" data-bg="true" />
-        {/* Fairway outline */}
-        <path d={fairwayPath} fill="none" stroke="#15803d" strokeWidth="0.8" data-bg="true" />
+        {/* Rough background */}
+        <rect x="0" y="0" width={W} height={H} fill="#1a5c2e" data-bg="true" />
+
+        {/* Rough texture stripes */}
+        {Array.from({ length: 21 }).map((_, i) => (
+          <rect key={i} data-bg="true" x={0} y={i * 10} width={W} height={10}
+            fill={i % 2 === 0 ? 'rgba(0,0,0,0.08)' : 'transparent'} />
+        ))}
+
+        {/* Fairway pill with stripe fill and shadow */}
+        <path d={pillPath} fill="url(#fw-stripes)" filter="url(#fw-shadow)" data-bg="true" />
+        <path d={pillPath} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" data-bg="true" />
 
         {/* Distance marker lines + labels */}
-        {DISTANCE_MARKERS.map((dist, i) => {
-          const y = markerYs[i];
+        {MARKER_YS.map((y, i) => (
+          <g key={MARKER_LABELS[i]}>
+            <line
+              x1={FW_LEFT} y1={y} x2={FW_RIGHT} y2={y}
+              stroke="rgba(255,255,255,0.5)" strokeWidth="0.5" strokeDasharray="2,2"
+              data-bg="true"
+            />
+            <text x={FW_LEFT - 2} y={y + 1.5} textAnchor="end" fontSize="4.5"
+              fill="#a7f3d0" data-bg="true">
+              {MARKER_LABELS[i]}
+            </text>
+            <text x={FW_RIGHT + 2} y={y + 1.5} textAnchor="start" fontSize="4.5"
+              fill="#a7f3d0" data-bg="true">
+              {MARKER_LABELS[i]}
+            </text>
+          </g>
+        ))}
+
+        {/* Zone labels */}
+        <text x={32} y={107} textAnchor="middle" fontSize="5"
+          fill="rgba(255,255,255,0.4)" fontWeight="700" data-bg="true">LF</text>
+        <text x={50} y={107} textAnchor="middle" fontSize="5"
+          fill="rgba(255,255,255,0.4)" fontWeight="700" data-bg="true">CF</text>
+        <text x={68} y={107} textAnchor="middle" fontSize="5"
+          fill="rgba(255,255,255,0.4)" fontWeight="700" data-bg="true">RF</text>
+
+        {/* Orientation labels */}
+        <text x={50} y={6} textAnchor="middle" fontSize="4" fill="#a7f3d0" data-bg="true">
+          ▲ GREEN
+        </text>
+        <text x={50} y={207} textAnchor="middle" fontSize="4" fill="#a7f3d0" data-bg="true">
+          TEE ▼
+        </text>
+
+        {/* Connecting lines between shots */}
+        {sortedShots.length > 1 && sortedShots.map((shot, idx) => {
+          if (idx === 0) return null;
+          const prev = sortedShots[idx - 1];
+          const midX = (prev.x + shot.x) / 2;
+          const midY = (prev.y + shot.y) / 2;
+          const dy = Math.abs(shot.y - prev.y);
+          const distYards = Math.round(dy / (Y_SPAN / YARD_SPAN));
           return (
-            <g key={dist}>
-              <line x1={fx} y1={y} x2={fx + fw} y2={y}
-                stroke="#15803d" strokeWidth="0.5" strokeDasharray="2,2" data-bg="true" />
-              <text x={fx - 2} y={y + 1.5} textAnchor="end" fontSize="5"
-                fill="#166534" fontWeight="600" data-bg="true">{dist}</text>
-              <text x={fx + fw + 2} y={y + 1.5} textAnchor="start" fontSize="5"
-                fill="#166534" fontWeight="600" data-bg="true">{dist}</text>
+            <g key={`line-${shot.id}`}>
+              <line
+                x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
+                stroke="rgba(255,255,255,0.7)" strokeWidth="0.8"
+                strokeDasharray="2,2"
+              />
+              <text
+                x={midX} y={midY - 1.5}
+                textAnchor="middle" fontSize="4.5"
+                fill="white"
+                stroke="black" strokeWidth="0.3" paintOrder="stroke"
+              >
+                {distYards}y
+              </text>
             </g>
           );
         })}
-
-        {/* Zone labels in center of fairway */}
-        <text x={fx + fw * 0.2} y={H / 2 + 2} textAnchor="middle" fontSize="5"
-          fill="#166534" fontWeight="700" opacity="0.6" data-bg="true">LF</text>
-        <text x={fx + fw * 0.5} y={H / 2 + 2} textAnchor="middle" fontSize="5"
-          fill="#166534" fontWeight="700" opacity="0.6" data-bg="true">CF</text>
-        <text x={fx + fw * 0.8} y={H / 2 + 2} textAnchor="middle" fontSize="5"
-          fill="#166534" fontWeight="700" opacity="0.6" data-bg="true">RF</text>
-
-        {/* Orientation labels */}
-        <text x={W / 2} y={7} textAnchor="middle" fontSize="4.5"
-          fill="#166534" fontWeight="500" data-bg="true">TEE ▼</text>
-        <text x={W / 2} y={H - 1} textAnchor="middle" fontSize="4.5"
-          fill="#166534" fontWeight="500" data-bg="true">▲ GREEN</text>
 
         {/* Shot markers */}
         {shots.map((shot) => (
@@ -177,6 +259,36 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
           />
         ))}
       </svg>
+
+      {/* Launcher pad */}
+      {!readOnly && (
+        <div className="flex flex-col items-center py-2 bg-gray-900 border-t border-gray-700">
+          <div
+            onPointerDown={handleLauncherDown}
+            style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none' }}
+            className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-gray-200"
+          >
+            <GolfBallIcon size={36} />
+          </div>
+          <span className="text-xs text-gray-400 mt-1">drag to place shot</span>
+        </div>
+      )}
+
+      {/* Ghost ball following pointer */}
+      {ghost && (
+        <div
+          style={{
+            position: 'fixed',
+            left: ghost.x,
+            top: ghost.y,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          <GolfBallIcon size={32} />
+        </div>
+      )}
     </div>
   );
 }
@@ -210,7 +322,8 @@ function ShotMarker({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
 
       {/* Shot number below */}
       <text x={0} y={r + 5.5} textAnchor="middle" fontSize="4.5"
-        fontWeight="700" fill="#1e3a8a" style={{ pointerEvents: 'none' }}>
+        fontWeight="700" fill="white" stroke="black" strokeWidth="0.3" paintOrder="stroke"
+        style={{ pointerEvents: 'none' }}>
         {shot.shotNumber}
       </text>
 
