@@ -14,19 +14,26 @@ const W = 100;
 const H = 170;
 
 const OVL_CX = 50;
-const OVL_CY = 85;
-const OVL_RX = 20;
+const OVL_CY = 88;
+const OVL_RX = 17;
 const OVL_RY = 52;
 
-// Green circle at top, tee ball center at bottom (inside SVG)
-const GREEN_CY = 14;
-const GREEN_R  = 8;
-const TEE_Y    = 150;   // ball center for tee drag source
+const GREEN_CY = 16;
+const GREEN_R  = 9;
+const TEE_Y    = 152;
 
-// 3 clean yardage markers inside oval
-const MARKER_YS    = [55, 85, 115];
-const MARKER_LABELS = [100, 200, 300];
-const YARD_SPAN    = 200;
+// 5 colored distance arcs, y = where arc crosses vertical center from tee
+const ARCS = [
+  { y: 50,  label: '300', color: 'rgba(200,200,200,0.75)', lw: 0.7 },
+  { y: 69,  label: '250', color: '#fde047',                lw: 0.8 },
+  { y: 89,  label: '200', color: '#22d3ee',                lw: 0.8 },
+  { y: 108, label: '150', color: 'rgba(255,255,255,0.85)', lw: 0.7 },
+  { y: 127, label: '100', color: '#ef4444',                lw: 0.8 },
+];
+
+// For distance estimation from last shot y position
+const MARKER_YS    = [50, 69, 89, 108, 127];
+const MARKER_LABELS = [300, 250, 200, 150, 100];
 
 function getSvgCoords(svg, clientX, clientY) {
   const pt = svg.createSVGPoint();
@@ -148,7 +155,7 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
       if (svg) {
         const pt = getSvgCoords(svg, me.clientX, me.clientY);
         const dx = pt.x - OVL_CX, dy = pt.y - OVL_CY;
-        const inOval = (dx * dx) / (OVL_RX * OVL_RX) + (dy * dy) / (OVL_RY * OVL_RY) <= 1.15;
+        const inOval = (dx * dx) / (OVL_RX * OVL_RX) + (dy * dy) / (OVL_RY * OVL_RY) <= 1.3;
         if (inOval) {
           const cur = shotsRef.current;
           onShotsChange([...cur, { id: generateId(), x: pt.x, y: pt.y, shotNumber: cur.length + 1 }]);
@@ -171,7 +178,7 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
 
   return (
     <div style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
-      {/* ── banner ── */}
+      {/* banner */}
       {!readOnly && (
         <div className="flex items-center gap-3 px-4 py-2 bg-gray-900">
           <div className="flex items-center gap-1.5">
@@ -200,7 +207,7 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
         </div>
       )}
 
-      {/* ── shape selector ── */}
+      {/* shape selector */}
       {!readOnly && shots.length > 0 && (
         <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 overflow-x-auto">
           <span className="text-gray-400 text-xs flex-shrink-0">Shape:</span>
@@ -214,62 +221,98 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
         </div>
       )}
 
-      {/* ── SVG diagram — rough background fills all, oval centered ── */}
+      {/* SVG diagram */}
       <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block">
         <defs>
-          <pattern id="fw-hatch" patternUnits="userSpaceOnUse" width="5" height="5"
-            patternTransform="rotate(45 0 0)">
-            <line x1="0" y1="0" x2="0" y2="5" stroke="#c8cbc8" strokeWidth="0.7"/>
+          {/* mowing stripes — horizontal alternating bands */}
+          <pattern id="mow-stripes" width={W} height="5" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width={W} height="2.5" fill="#4d8b3a"/>
+            <rect x="0" y="2.5" width={W} height="2.5" fill="#3f7430"/>
           </pattern>
           <clipPath id="oval-clip">
             <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}/>
           </clipPath>
+          <clipPath id="green-clip">
+            <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}/>
+          </clipPath>
+          <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="rgba(0,0,0,0.4)"/>
+          </filter>
         </defs>
 
-        {/* rough fills everything */}
-        <rect x="0" y="0" width={W} height={H} fill="#3a5228"/>
+        {/* deep rough — darkest layer */}
+        <rect x="0" y="0" width={W} height={H} fill="#152010"/>
 
-        {/* ── GREEN at top ── */}
-        <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R} fill="#1e7a1e" stroke="#4ade80" strokeWidth="0.7"/>
-        <line x1={OVL_CX} y1={GREEN_CY - 2} x2={OVL_CX} y2={GREEN_CY - 11}
+        {/* inner rough — slightly lighter ring around fairway */}
+        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX + 14} ry={OVL_RY + 14} fill="#1e3518"/>
+
+        {/* fairway oval with mowing stripes */}
+        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
+          fill="url(#mow-stripes)" clipPath="url(#oval-clip)"/>
+        {/* subtle fairway edge */}
+        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
+          fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.6"/>
+
+        {/* green at top with mowing stripes + bright ring */}
+        <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}
+          fill="url(#mow-stripes)" clipPath="url(#green-clip)"/>
+        <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}
+          fill="none" stroke="#4ade80" strokeWidth="0.8"/>
+        {/* flagstick + flag */}
+        <line x1={OVL_CX} y1={GREEN_CY - 1.5} x2={OVL_CX} y2={GREEN_CY - 12}
           stroke="white" strokeWidth="0.8" strokeLinecap="round"/>
         <polygon
-          points={`${OVL_CX},${GREEN_CY-11} ${OVL_CX+4.5},${GREEN_CY-8.5} ${OVL_CX},${GREEN_CY-6}`}
+          points={`${OVL_CX},${GREEN_CY-12} ${OVL_CX+5},${GREEN_CY-9} ${OVL_CX},${GREEN_CY-6}`}
           fill="#ef4444"/>
 
-        {/* ── fairway oval ── */}
-        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY} fill="#e8ebe8"/>
-        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
-          fill="url(#fw-hatch)" opacity="0.5" clipPath="url(#oval-clip)"/>
-        <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
-          fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.5"/>
+        {/* red dashed center line from green to tee */}
+        <line x1={OVL_CX} y1={GREEN_CY + GREEN_R} x2={OVL_CX} y2={TEE_Y}
+          stroke="rgba(239,68,68,0.5)" strokeWidth="0.6" strokeDasharray="3,3"/>
 
-        {/* distance markers — hidden in readOnly (Analysis) */}
-        {!readOnly && MARKER_YS.map((y, i) => {
-          const dy = y - OVL_CY;
-          const chord = OVL_RX * Math.sqrt(Math.max(0, 1 - dy * dy / (OVL_RY * OVL_RY)));
+        {/* distance arcs — hidden in readOnly */}
+        {!readOnly && ARCS.map((arc) => {
+          const R = TEE_Y - arc.y;
+          const x1 = OVL_CX - R;
+          const x2 = OVL_CX + R;
+          // clamp arc endpoints to SVG bounds for label placement
+          const clipped = x1 < 1 || x2 > W - 1;
+          const cx1 = Math.max(1, x1);
+          const cx2 = Math.min(W - 1, x2);
           return (
-            <g key={i}>
-              <line x1={OVL_CX - chord} y1={y} x2={OVL_CX + chord} y2={y}
-                stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" strokeDasharray="2,2"/>
-              <text x={OVL_CX - chord - 1.5} y={y + 1.5} textAnchor="end"
-                fontSize="3.5" fill="#4b5563" fontWeight="500">{MARKER_LABELS[i]}</text>
-              <text x={OVL_CX + chord + 1.5} y={y + 1.5} textAnchor="start"
-                fontSize="3.5" fill="#4b5563" fontWeight="500">{MARKER_LABELS[i]}</text>
+            <g key={arc.label}>
+              <path
+                d={`M ${cx1},${TEE_Y} A ${R},${R} 0 0,1 ${cx2},${TEE_Y}`}
+                fill="none" stroke={arc.color} strokeWidth={arc.lw}
+                strokeDasharray={arc.label === '300' ? '2,2' : undefined}
+              />
+              {/* labels on left and right of arc */}
+              {clipped ? (
+                <>
+                  <text x="3.5" y={arc.y + 1.5} textAnchor="start"
+                    fontSize="3.5" fontWeight="700" fill="white"
+                    paintOrder="stroke" stroke="#000" strokeWidth="2">{arc.label}</text>
+                  <text x={W - 3.5} y={arc.y + 1.5} textAnchor="end"
+                    fontSize="3.5" fontWeight="700" fill="white"
+                    paintOrder="stroke" stroke="#000" strokeWidth="2">{arc.label}</text>
+                </>
+              ) : (
+                <>
+                  <text x={cx1 - 1.5} y={TEE_Y + 1} textAnchor="end"
+                    fontSize="3.5" fontWeight="700" fill="white"
+                    paintOrder="stroke" stroke="#000" strokeWidth="2">{arc.label}</text>
+                  <text x={cx2 + 1.5} y={TEE_Y + 1} textAnchor="start"
+                    fontSize="3.5" fontWeight="700" fill="white"
+                    paintOrder="stroke" stroke="#000" strokeWidth="2">{arc.label}</text>
+                </>
+              )}
             </g>
           );
         })}
 
-        {/* subtle center line — hidden in readOnly */}
-        {!readOnly && (
-          <line x1={OVL_CX} y1={OVL_CY - OVL_RY + 3} x2={OVL_CX} y2={OVL_CY + OVL_RY - 3}
-            stroke="rgba(0,0,0,0.12)" strokeWidth="0.4" strokeDasharray="3,4"/>
-        )}
-
-        {/* dotted tee line to first shot — only in active mode */}
+        {/* dotted tee line to first shot */}
         {!readOnly && sorted.length > 0 && (
           <line x1={OVL_CX} y1={TEE_Y} x2={sorted[0].x} y2={sorted[0].y}
-            stroke="rgba(255,255,255,0.5)" strokeWidth="0.7" strokeDasharray="2.5,2"/>
+            stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" strokeDasharray="2.5,2"/>
         )}
 
         {/* connecting lines between shots */}
@@ -278,15 +321,16 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
           const prev = sorted[i - 1];
           const mx = (prev.x + shot.x) / 2;
           const my = (prev.y + shot.y) / 2;
-          const dy = Math.abs(shot.y - prev.y);
-          const yds = Math.round(dy / ((MARKER_YS[MARKER_YS.length - 1] - MARKER_YS[0]) / YARD_SPAN));
+          const dyPx = Math.abs(shot.y - prev.y);
+          const pxPerYd = (MARKER_YS[MARKER_YS.length - 1] - MARKER_YS[0]) / Math.abs(MARKER_LABELS[MARKER_LABELS.length - 1] - MARKER_LABELS[0]);
+          const yds = Math.round(dyPx / pxPerYd);
           return (
             <g key={`conn-${shot.id}`}>
               <line x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
-                stroke="rgba(255,255,255,0.55)" strokeWidth="0.7" strokeDasharray="2.5,2"/>
+                stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" strokeDasharray="2.5,2"/>
               {!readOnly && (
-                <text x={mx + 2} y={my} fontSize="3.5" fill="white" fontWeight="600"
-                  paintOrder="stroke" stroke="rgba(0,0,0,0.4)" strokeWidth="2">{yds}y</text>
+                <text x={mx + 2} y={my} fontSize="3.5" fill="white" fontWeight="700"
+                  paintOrder="stroke" stroke="#000" strokeWidth="2">{yds}y</text>
               )}
             </g>
           );
@@ -300,36 +344,23 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
             onDelete={(e) => handleDelete(e, shot.id)}/>
         ))}
 
-        {/* ── TEE area — drag source inside SVG ── */}
-        {!readOnly && (
-          <g>
-            {/* tee peg */}
-            <rect x={OVL_CX - 1.5} y={TEE_Y + 4} width={3} height={7} rx="0.8" fill="#c8a96e"/>
-            <ellipse cx={OVL_CX} cy={TEE_Y + 4} rx={3.5} ry={1.5} fill="#c8a96e"/>
-            {/* tee ground */}
-            <rect x={OVL_CX - 9} y={TEE_Y + 10} width={18} height={5} rx="1.5"
-              fill="#4a6f35" stroke="rgba(255,255,255,0.2)" strokeWidth="0.4"/>
-            {/* golf ball — drag source */}
-            <circle cx={OVL_CX} cy={TEE_Y - 1} r={5}
-              fill="white" stroke="#d1d5db" strokeWidth="0.5"
-              onPointerDown={handleLauncherDown}
-              style={{ touchAction: 'none', cursor: 'grab' }}/>
-            {/* dimples */}
-            {[[-2,-3],[2,-3],[-3.5,0],[0,0],[3.5,0],[-2,3],[2,3]].map(([dx, dy], i) => (
-              <circle key={i} cx={OVL_CX + dx} cy={TEE_Y - 1 + dy} r={0.9}
-                fill="rgba(0,0,0,0.08)" style={{ pointerEvents: 'none' }}/>
-            ))}
-            <text x={OVL_CX} y={TEE_Y + 22} textAnchor="middle"
-              fontSize="3" fill="rgba(255,255,255,0.45)">DRAG TO PLACE</text>
-          </g>
-        )}
-
-        {/* readOnly: show small tee box without drag affordance */}
-        {readOnly && (
-          <rect x={OVL_CX - 7} y={TEE_Y + 6} width={14} height={4} rx="1.5"
-            fill="#4a6f35" stroke="rgba(255,255,255,0.15)" strokeWidth="0.4"/>
-        )}
+        {/* tee marker circle */}
+        <circle cx={OVL_CX} cy={TEE_Y} r={3} fill="#c8a96e" stroke="white" strokeWidth="0.6"/>
+        <circle cx={OVL_CX} cy={TEE_Y} r={1.2} fill="white" opacity={0.6}/>
       </svg>
+
+      {/* external launcher — HTML div for reliable iOS touch */}
+      {!readOnly && (
+        <div
+          onPointerDown={handleLauncherDown}
+          style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', WebkitUserSelect: 'none' }}
+          className="bg-[#152010] flex items-center justify-center gap-3 py-3 border-t border-[#0a1008] active:opacity-70 transition-opacity"
+        >
+          <GolfBallIcon size={28}/>
+          <span className="text-xs font-semibold tracking-widest uppercase"
+            style={{ color: 'rgba(134,239,172,0.6)' }}>Drag to place shot</span>
+        </div>
+      )}
 
       {/* ghost ball while dragging */}
       {ghost && (
