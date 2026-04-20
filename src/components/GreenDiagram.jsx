@@ -5,9 +5,8 @@ const W  = 100;
 const H  = 100;
 const CX = 50;
 const CY = 50;
-const MAX_R = 42; // SVG units = 30ft boundary
+const MAX_R = 42;
 
-// ring radii → feet
 const RINGS = [{ r: 42, ft: 30 }, { r: 28, ft: 20 }, { r: 14, ft: 10 }];
 
 function getSvgCoords(svg, clientX, clientY) {
@@ -22,7 +21,7 @@ function getDistFt(shots) {
   if (!shots || shots.length === 0) return '—';
   const last = [...shots].sort((a, b) => b.shotNumber - a.shotNumber)[0];
   const dx = last.x - CX, dy = last.y - CY;
-  return String(Math.round((Math.sqrt(dx*dx + dy*dy) / MAX_R) * 30));
+  return String(Math.round((Math.sqrt(dx * dx + dy * dy) / MAX_R) * 30));
 }
 
 function GolfBallIcon({ size = 30 }) {
@@ -41,25 +40,18 @@ function ShotPin({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
   if (readOnly) {
     return (
       <g transform={`translate(${shot.x},${shot.y})`}>
-        <circle r={1.8} fill="#111827" opacity={0.72} />
+        <circle r={2} fill="#111827"/>
       </g>
     );
   }
-  const stroke = isDragging ? '#2563eb' : '#374151';
-  const fill   = isDragging ? '#dbeafe' : 'white';
+  const fill = isDragging ? '#1d4ed8' : '#111827';
   return (
     <g transform={`translate(${shot.x},${shot.y})`}>
-      <ellipse cx={0.4} cy={0.4} rx={2.5} ry={1.3} fill="rgba(0,0,0,0.15)"/>
-      <path
-        d="M 0 0 C -2.45 -2.1, -3.5 -4.2, -3.5 -6.3 C -3.5 -9.1, -1.75 -11.2, 0 -11.2 C 1.75 -11.2, 3.5 -9.1, 3.5 -6.3 C 3.5 -4.2, 2.45 -2.1, 0 0 Z"
-        fill={fill} stroke={stroke} strokeWidth="1.0"
-        onPointerDown={onPointerDown}
-        style={{ cursor: 'grab' }}
-      />
-      <circle cx={0} cy={-6.3} r={2.1} fill={stroke} style={{ pointerEvents: 'none' }}/>
-      <text x={0} y={-5} textAnchor="middle" fontSize="2.5" fontWeight="700"
+      <circle r={3.5} fill={fill}
+        onPointerDown={onPointerDown} style={{ cursor: 'grab' }}/>
+      <text x={0} y={1.3} textAnchor="middle" fontSize="3" fontWeight="700"
         fill="white" style={{ pointerEvents: 'none' }}>{shot.shotNumber}</text>
-      <g transform="translate(3.8,-11.5)" onClick={onDelete}
+      <g transform="translate(5,-5)" onClick={onDelete}
         onPointerDown={(e) => e.stopPropagation()} style={{ cursor: 'pointer' }}>
         <circle cx={0} cy={0} r={2.3} fill="#ef4444" stroke="white" strokeWidth="0.7"/>
         <line x1={-1.1} y1={-1.1} x2={1.1} y2={1.1} stroke="white" strokeWidth="1.0" strokeLinecap="round"/>
@@ -111,7 +103,7 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
       if (svg) {
         const pt = getSvgCoords(svg, me.clientX, me.clientY);
         const dx = pt.x - CX, dy = pt.y - CY;
-        if (Math.sqrt(dx*dx + dy*dy) <= MAX_R + 4) {
+        if (Math.sqrt(dx * dx + dy * dy) <= MAX_R + 4) {
           const cur = shotsRef.current;
           onShotsChange([...cur, { id: generateId(), x: pt.x, y: pt.y, shotNumber: cur.length + 1 }]);
         }
@@ -133,7 +125,7 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
 
   return (
     <div style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
-      {/* ── banner ── */}
+      {/* banner */}
       {!readOnly && (
         <div className="flex items-center gap-3 px-4 py-2 bg-gray-900">
           <div className="flex items-center gap-1.5">
@@ -162,100 +154,85 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
         </div>
       )}
 
-      {/* ── SVG ── */}
-      <div className="flex justify-center py-4 bg-[#f8f9fb]">
-        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
-          style={{ width: '84vw', maxWidth: 340, display: 'block' }}>
-          <defs>
-            <filter id="green-shadow">
-              <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="rgba(0,0,0,0.1)"/>
-            </filter>
-          </defs>
+      {/* SVG */}
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block">
+        {/* outer background */}
+        <rect x="0" y="0" width={W} height={H} fill="#d4d4d0"/>
 
-          {/* background */}
-          <rect x="0" y="0" width={W} height={H} fill="#f8f9fb"/>
+        {/* rings from outside to inside */}
+        <circle cx={CX} cy={CY} r={42} fill="#e4e4e0"/>
+        <circle cx={CX} cy={CY} r={28} fill="#eeeeeb"/>
+        <circle cx={CX} cy={CY} r={14} fill="#f5f5f2"/>
 
-          {/* outer rough / fringe */}
-          <circle cx={CX} cy={CY} r={MAX_R + 5} fill="#3a5228" filter="url(#green-shadow)"/>
+        {/* ring borders */}
+        <circle cx={CX} cy={CY} r={42} fill="none" stroke="#2a2a2a" strokeWidth="0.6"/>
+        <circle cx={CX} cy={CY} r={28} fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
+        <circle cx={CX} cy={CY} r={14} fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
 
-          {/* rings: outer→inner, alternating white/very-light-grey */}
-          {RINGS.map(({ r }, i) => (
-            <circle key={r} cx={CX} cy={CY} r={r}
-              fill={i % 2 === 0 ? '#f8f9fb' : '#f0f1f3'}
-              stroke="#c4c4cc" strokeWidth="0.6"/>
-          ))}
+        {/* distance labels */}
+        {RINGS.map(({ r, ft }) => (
+          <text key={ft} x={CX + r - 1} y={CY + 1.5}
+            textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">
+            {ft}ft
+          </text>
+        ))}
 
-          {/* ring distance labels — hidden in readOnly (Analysis) */}
-          {!readOnly && RINGS.map(({ r, ft }) => (
-            <text key={ft} x={CX + r - 3} y={CY + 1.5}
-              textAnchor="end" fontSize="3.5" fill="#9ca3af" fontWeight="500">
-              {ft}ft
-            </text>
-          ))}
+        {/* center cup */}
+        <circle cx={CX} cy={CY} r={2} fill="#2a2a2a"/>
 
-          {/* subtle crosshair */}
-          <line x1={CX} y1={CY - MAX_R + 2} x2={CX} y2={CY + MAX_R - 2}
-            stroke="#d1d5db" strokeWidth="0.4" strokeDasharray="2,3"/>
-          <line x1={CX - MAX_R + 2} y1={CY} x2={CX + MAX_R - 2} y2={CY}
-            stroke="#d1d5db" strokeWidth="0.4" strokeDasharray="2,3"/>
+        {/* flagstick + flag */}
+        <line x1={CX} y1={CY - 1.5} x2={CX} y2={CY - 12}
+          stroke="#1a1a1a" strokeWidth="0.8" strokeLinecap="round"/>
+        <polygon points={`${CX},${CY-12} ${CX+5.5},${CY-9} ${CX},${CY-6}`} fill="#ef4444"/>
 
-          {/* center cup */}
-          <circle cx={CX} cy={CY} r={2.5} fill="#374151" stroke="#6b7280" strokeWidth="0.5"/>
+        {/* connecting lines (active mode only) */}
+        {!readOnly && sorted.length > 1 && sorted.map((shot, i) => {
+          if (i === 0) return null;
+          const prev = sorted[i - 1];
+          const mx = (prev.x + shot.x) / 2, my = (prev.y + shot.y) / 2;
+          const dx = shot.x - prev.x, dy = shot.y - prev.y;
+          const ft = Math.round((Math.sqrt(dx * dx + dy * dy) / MAX_R) * 30);
+          return (
+            <g key={`c-${shot.id}`}>
+              <line x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
+                stroke="#111827" strokeWidth="0.5" strokeDasharray="2,2"/>
+              <text x={mx + 1.5} y={my} fontSize="3" fill="#374151" fontWeight="600">{ft}ft</text>
+            </g>
+          );
+        })}
 
-          {/* flagstick */}
-          <line x1={CX} y1={CY - 2} x2={CX} y2={CY - 18}
-            stroke="#9ca3af" strokeWidth="1" strokeLinecap="round"/>
-          {/* flag */}
-          <polygon points={`${CX},${CY-18} ${CX+8},${CY-13.5} ${CX},${CY-9}`} fill="#ef4444"/>
+        {/* shot markers */}
+        {shots.map(shot => (
+          <ShotPin key={shot.id} shot={shot} isDragging={dragging === shot.id}
+            readOnly={readOnly}
+            onPointerDown={(e) => handleMarkerDown(e, shot.id)}
+            onDelete={(e) => handleDelete(e, shot.id)}/>
+        ))}
+      </svg>
 
-          {/* connecting lines */}
-          {sorted.length > 1 && sorted.map((shot, i) => {
-            if (i === 0) return null;
-            const prev = sorted[i-1];
-            const mx = (prev.x + shot.x) / 2, my = (prev.y + shot.y) / 2;
-            const dx = shot.x - prev.x, dy = shot.y - prev.y;
-            const ft = Math.round((Math.sqrt(dx*dx + dy*dy) / MAX_R) * 30);
-            return (
-              <g key={`c-${shot.id}`}>
-                <line x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
-                  stroke="#6b7280" strokeWidth="0.7" strokeDasharray="2,2"/>
-                <text x={mx + 1.5} y={my} fontSize="3.5" fill="#374151" fontWeight="600"
-                  paintOrder="stroke" stroke="white" strokeWidth="2">{ft}ft</text>
-              </g>
-            );
-          })}
-
-          {/* shot markers */}
-          {shots.map(shot => (
-            <ShotPin key={shot.id} shot={shot} isDragging={dragging === shot.id}
-              readOnly={readOnly}
-              onPointerDown={(e) => handleMarkerDown(e, shot.id)}
-              onDelete={(e) => handleDelete(e, shot.id)}/>
-          ))}
-        </svg>
-      </div>
-
-      {/* ── launcher ── */}
+      {/* launcher */}
       {!readOnly && (
-        <div className="flex flex-col items-center py-3 bg-gray-900 border-t border-gray-800">
-          <div onPointerDown={handleLauncherDown}
-            style={{ touchAction: 'none', cursor: 'grab' }}
-            className="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200 active:scale-95 transition-transform">
-            <GolfBallIcon size={30}/>
-          </div>
-          <span className="text-xs text-gray-500 mt-1.5 tracking-wide">DRAG TO PLACE</span>
+        <div
+          onPointerDown={handleLauncherDown}
+          style={{ touchAction: 'none', cursor: 'grab', userSelect: 'none', WebkitUserSelect: 'none' }}
+          className="bg-gray-900 flex items-center justify-center gap-3 py-3 border-t border-gray-800 active:opacity-70 transition-opacity"
+        >
+          <GolfBallIcon size={28}/>
+          <span className="text-xs font-semibold text-gray-400 tracking-widest uppercase">
+            Drag to place shot
+          </span>
         </div>
       )}
 
-      {/* ── ghost ── */}
+      {/* ghost ball */}
       {ghost && (
-        <div style={{ position:'fixed', left: ghost.x, top: ghost.y,
-          transform:'translate(-50%,-50%)', pointerEvents:'none', zIndex:9999 }}>
+        <div style={{ position: 'fixed', left: ghost.x, top: ghost.y,
+          transform: 'translate(-50%,-50%)', pointerEvents: 'none', zIndex: 9999 }}>
           <GolfBallIcon size={30}/>
         </div>
       )}
 
-      {/* ── summary sheet ── */}
+      {/* summary sheet */}
       {showSummary && (
         <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShowSummary(false)}>
           <div className="absolute inset-0 bg-black/40"/>
@@ -274,7 +251,7 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
               : <div className="space-y-2">
                   {sorted.map(s => {
                     const dx = s.x - CX, dy = s.y - CY;
-                    const ft = Math.round((Math.sqrt(dx*dx+dy*dy) / MAX_R) * 30);
+                    const ft = Math.round((Math.sqrt(dx * dx + dy * dy) / MAX_R) * 30);
                     return (
                       <div key={s.id} className="flex items-center justify-between py-2 border-b border-gray-50">
                         <div className="flex items-center gap-3">

@@ -264,46 +264,93 @@ function ViewToggle({ mode, onChange }) {
 }
 
 // ---- Fairway Dispersion ----
-function FairwayDispersion({ shots }) {
-  function dotColor(shot) {
-    const dev = Math.abs(shot.x - 50);
-    if (dev <= 8) return '#4ade80';
-    if (dev <= 18) return '#fb923c';
-    return '#ef4444';
-  }
+// Mirrors the FairwayDiagram layout constants so dispersion dots land in the right places
+const FW_D = {
+  W: 100, H: 175,
+  OVL_CX: 50, OVL_CY: 90, OVL_RX: 22, OVL_RY: 56,
+  GREEN_CY: 12, GREEN_R: 11,
+  TEE_Y: 160, TEE_R: 5,
+  MARKERS: [
+    { yd: 300, y: 38 }, { yd: 250, y: 59 }, { yd: 200, y: 80 },
+    { yd: 150, y: 100 }, { yd: 100, y: 121 }, { yd: 50, y: 142 },
+  ],
+};
 
+function FairwayDispersion({ shots }) {
+  const { W, H, OVL_CX, OVL_CY, OVL_RX, OVL_RY, GREEN_CY, GREEN_R, TEE_Y, TEE_R, MARKERS } = FW_D;
   return (
-    <div>
-      <svg viewBox="0 0 100 210" className="w-full" style={{ display: 'block' }}>
-        <rect x="0" y="0" width="100" height="210" fill="#1c2b1c" />
-        {shots.map((shot) => (
-          <circle key={shot.id} cx={shot.x} cy={shot.y} r={2.5} fill={dotColor(shot)} opacity={0.85} />
-        ))}
-      </svg>
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full block">
+      <defs>
+        <pattern id="fw-hatch-d" patternUnits="userSpaceOnUse" width="4" height="4"
+          patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="4" stroke="#c4c4c0" strokeWidth="0.7"/>
+        </pattern>
+        <clipPath id="fw-oval-clip-d">
+          <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}/>
+        </clipPath>
+      </defs>
+      <rect x="0" y="0" width={W} height={H} fill="#f5f5f2"/>
+      {/* green */}
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}        fill="#d4d4d0"/>
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65} fill="#e6e6e2"/>
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35} fill="#f2f2ef"/>
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}        fill="none" stroke="#2a2a2a" strokeWidth="0.7"/>
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65} fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
+      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35} fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
+      <line x1={OVL_CX} y1={GREEN_CY + 2} x2={OVL_CX} y2={GREEN_CY - 7}
+        stroke="#1a1a1a" strokeWidth="0.7" strokeLinecap="round"/>
+      <polygon points={`${OVL_CX},${GREEN_CY-7} ${OVL_CX+4},${GREEN_CY-4.5} ${OVL_CX},${GREEN_CY-2}`}
+        fill="#ef4444"/>
+      {/* oval */}
+      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY} fill="white"/>
+      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
+        fill="url(#fw-hatch-d)" clipPath="url(#fw-oval-clip-d)"/>
+      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
+        fill="none" stroke="#2a2a2a" strokeWidth="0.7"/>
+      {/* distance markers */}
+      {MARKERS.map(({ yd, y }) => {
+        const dy = y - OVL_CY;
+        const chord = OVL_RX * Math.sqrt(Math.max(0, 1 - (dy * dy) / (OVL_RY * OVL_RY)));
+        return (
+          <g key={yd}>
+            <line x1={OVL_CX - chord} y1={y} x2={OVL_CX + chord} y2={y}
+              stroke="#a8a8a4" strokeWidth="0.4" strokeDasharray="1.5,2"/>
+            <text x={OVL_CX + chord + 1.5} y={y + 1.3} fontSize="3" fill="#4a4a46" fontWeight="500">{yd}</text>
+          </g>
+        );
+      })}
+      {/* tee */}
+      <circle cx={OVL_CX} cy={TEE_Y} r={TEE_R}           fill="#1a1a1a"/>
+      <circle cx={OVL_CX} cy={TEE_Y} r={TEE_R * 0.42}    fill="white" opacity={0.35}/>
+      {/* shot dots */}
+      {shots.map((shot) => (
+        <circle key={shot.id} cx={shot.x} cy={shot.y} r={2} fill="#111827"/>
+      ))}
+    </svg>
   );
 }
 
 // ---- Green Dispersion ----
 function GreenDispersion({ shots }) {
-  function dotColor(shot) {
-    const dx = shot.x - 50;
-    const dy = shot.y - 50;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist <= 15) return '#4ade80';
-    if (dist <= 29) return '#fb923c';
-    return '#ef4444';
-  }
-
   return (
-    <div>
-      <svg viewBox="0 0 100 100" className="w-full" style={{ display: 'block' }}>
-        <rect x="0" y="0" width="100" height="100" fill="#1c2b1c" />
-        {shots.map((shot) => (
-          <circle key={shot.id} cx={shot.x} cy={shot.y} r={2.5} fill={dotColor(shot)} opacity={0.85} />
-        ))}
-      </svg>
-    </div>
+    <svg viewBox="0 0 100 100" className="w-full block">
+      <rect x="0" y="0" width="100" height="100" fill="#d4d4d0"/>
+      <circle cx="50" cy="50" r="42" fill="#e4e4e0"/>
+      <circle cx="50" cy="50" r="28" fill="#eeeeeb"/>
+      <circle cx="50" cy="50" r="14" fill="#f5f5f2"/>
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#2a2a2a" strokeWidth="0.6"/>
+      <circle cx="50" cy="50" r="28" fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
+      <circle cx="50" cy="50" r="14" fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
+      <text x="41" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">30ft</text>
+      <text x="27" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">20ft</text>
+      <text x="13" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">10ft</text>
+      <circle cx="50" cy="50" r="2" fill="#2a2a2a"/>
+      <line x1="50" y1="48.5" x2="50" y2="38" stroke="#1a1a1a" strokeWidth="0.8" strokeLinecap="round"/>
+      <polygon points="50,38 55.5,41 50,44" fill="#ef4444"/>
+      {shots.map((shot) => (
+        <circle key={shot.id} cx={shot.x} cy={shot.y} r={2} fill="#111827" opacity={0.85}/>
+      ))}
+    </svg>
   );
 }
 
