@@ -3,12 +3,6 @@ import FairwayDiagram from './FairwayDiagram';
 import GreenDiagram from './GreenDiagram';
 import { calcRoundSG } from '../utils/strokesGained';
 
-// Fairway diagram constants (mirrored from FairwayDiagram)
-const FW_MARKER_YS = [10, 48, 86, 124, 162, 200];
-
-// Green diagram constants
-const GREEN_CX = 50;
-const GREEN_CY = 50;
 
 export default function AnalysisView({ rounds }) {
   const [selectedRound, setSelectedRound] = useState('all');
@@ -281,35 +275,10 @@ function FairwayDispersion({ shots }) {
   return (
     <div>
       <svg viewBox="0 0 100 210" className="w-full" style={{ display: 'block' }}>
-        {/* Dark background */}
         <rect x="0" y="0" width="100" height="210" fill="#1c2b1c" />
-
-        {/* Vertical center dashed line */}
-        <line x1="50" y1="5" x2="50" y2="205"
-          stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" strokeDasharray="3,3" />
-
-        {/* Horizontal distance lines */}
-        {FW_MARKER_YS.map((y) => (
-          <line key={y} x1="0" y1={y} x2="100" y2={y}
-            stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-        ))}
-
-        {/* Shot dots */}
         {shots.map((shot) => (
-          <g key={shot.id}>
-            <circle cx={shot.x} cy={shot.y} r={3.5} fill={dotColor(shot)} opacity={0.85} />
-            <text x={shot.x + 5} y={shot.y + 1.5}
-              fontSize="3.5" fill="white" textAnchor="start"
-              stroke="black" strokeWidth="0.2" paintOrder="stroke">
-              {shot.shotNumber}
-            </text>
-          </g>
+          <circle key={shot.id} cx={shot.x} cy={shot.y} r={2.5} fill={dotColor(shot)} opacity={0.85} />
         ))}
-
-        {/* Title */}
-        <text x="50" y="208" textAnchor="middle" fontSize="4" fill="rgba(255,255,255,0.5)">
-          Fairway Dispersion
-        </text>
       </svg>
     </div>
   );
@@ -329,30 +298,9 @@ function GreenDispersion({ shots }) {
   return (
     <div>
       <svg viewBox="0 0 100 100" className="w-full" style={{ display: 'block' }}>
-        {/* Dark background */}
         <rect x="0" y="0" width="100" height="100" fill="#1c2b1c" />
-
-        {/* Crosshair */}
-        <line x1="50" y1="0" x2="50" y2="100"
-          stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-        <line x1="0" y1="50" x2="100" y2="50"
-          stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-
-        {/* Reference circles */}
-        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
-        <circle cx="50" cy="50" r="29" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
-        <circle cx="50" cy="50" r="15" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
-
-        {/* Shot dots */}
         {shots.map((shot) => (
-          <g key={shot.id}>
-            <circle cx={shot.x} cy={shot.y} r={3.5} fill={dotColor(shot)} opacity={0.85} />
-            <text x={shot.x + 5} y={shot.y + 1.5}
-              fontSize="3.5" fill="white" textAnchor="start"
-              stroke="black" strokeWidth="0.2" paintOrder="stroke">
-              {shot.shotNumber}
-            </text>
-          </g>
+          <circle key={shot.id} cx={shot.x} cy={shot.y} r={2.5} fill={dotColor(shot)} opacity={0.85} />
         ))}
       </svg>
     </div>

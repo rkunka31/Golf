@@ -185,8 +185,8 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
               stroke="#c4c4cc" strokeWidth="0.6"/>
           ))}
 
-          {/* ring distance labels — right side, inside each ring */}
-          {RINGS.map(({ r, ft }) => (
+          {/* ring distance labels — hidden in readOnly (Analysis) */}
+          {!readOnly && RINGS.map(({ r, ft }) => (
             <text key={ft} x={CX + r - 3} y={CY + 1.5}
               textAnchor="end" fontSize="3.5" fill="#9ca3af" fontWeight="500">
               {ft}ft
