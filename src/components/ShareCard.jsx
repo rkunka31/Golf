@@ -1,4 +1,3 @@
-
 import { useRef } from 'react';
 
 // Score color coding for SVG fill
