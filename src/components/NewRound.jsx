@@ -32,16 +32,16 @@ export default function NewRound({ onSave, onCancel }) {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="bg-green-800 text-white px-4 pt-10 pb-6 flex items-center gap-3">
+      <div className="bg-white border-b border-[#e5e7eb] px-4 pt-12 pb-4 flex items-center gap-3">
         <button
           onClick={onCancel}
-          className="p-2 -ml-2 rounded-full active:bg-green-700 transition-colors"
+          className="p-2 -ml-2 rounded-full active:bg-gray-100 transition-colors text-[#111827]"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-xl font-bold">New Round</h1>
+        <h1 className="text-xl font-bold text-[#111827]">New Round</h1>
       </div>
 
       <div className="px-4 py-6 space-y-6">
