@@ -16,12 +16,6 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
     });
   };
 
-  const calcScore = () => {
-    // Auto-calculate score if not manually set
-    if (hole.score !== null && hole.score !== '') return hole.score;
-    return '';
-  };
-
   const displayScore = hole.score !== null && hole.score !== '' ? hole.score : '';
 
   const scoreDiff = displayScore !== '' ? Number(displayScore) - hole.par : null;

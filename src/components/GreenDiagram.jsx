@@ -1,52 +1,55 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { generateId } from '../utils/uuid';
 
-// Rings: outer to inner, in feet from pin
+// Rings: from outside to inside, in feet from pin
 const RINGS = [30, 20, 10];
 const RING_COLORS = ['#4ade80', '#22c55e', '#16a34a'];
 
-export default function GreenDiagram({ shots, onShotsChange }) {
+const W = 100;
+const H = 100;
+const CX = 50;
+const CY = 50;
+const MAX_R = 44; // outermost ring radius in SVG units
+
+export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(null);
+  // Keep live ref so drag callbacks see current shots
+  const shotsRef = useRef(shots);
+  useEffect(() => { shotsRef.current = shots; }, [shots]);
 
-  const W = 100;
-  const H = 100;
-  const CX = 50;
-  const CY = 50;
-  // Outermost ring radius in SVG units
-  const MAX_R = 44;
-
-  const getSvgPoint = useCallback((clientX, clientY) => {
+  const getSvgPoint = (clientX, clientY) => {
     const svg = svgRef.current;
-    if (!svg) return { x: 50, y: 50 };
+    if (!svg) return { x: CX, y: CY };
     const rect = svg.getBoundingClientRect();
     return {
       x: ((clientX - rect.left) / rect.width) * W,
       y: ((clientY - rect.top) / rect.height) * H,
     };
-  }, []);
+  };
 
-  const handleBgClick = useCallback((e) => {
+  const handleBgClick = (e) => {
+    if (readOnly) return;
     if (e.target !== svgRef.current && e.target.dataset.bg !== 'true') return;
     const pt = getSvgPoint(e.clientX, e.clientY);
-    // Only add if within the outermost ring
+    // Allow tapping anywhere within expanded green area
     const dx = pt.x - CX;
     const dy = pt.y - CY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > MAX_R + 4) return; // allow a bit outside
+    if (Math.sqrt(dx * dx + dy * dy) > MAX_R + 5) return;
+    const current = shotsRef.current;
     const newShot = {
       id: generateId(),
       x: pt.x,
       y: pt.y,
-      shotNumber: shots.length + 1,
+      shotNumber: current.length + 1,
     };
-    onShotsChange([...shots, newShot]);
-  }, [shots, onShotsChange, getSvgPoint]);
+    onShotsChange([...current, newShot]);
+  };
 
-  const handleMarkerPointerDown = useCallback((e, shotId) => {
+  const handleMarkerPointerDown = (e, shotId) => {
+    if (readOnly) return;
     e.stopPropagation();
     e.preventDefault();
-
     setDragging(shotId);
 
     const onMove = (me) => {
@@ -54,7 +57,7 @@ export default function GreenDiagram({ shots, onShotsChange }) {
       const clientY = me.touches ? me.touches[0].clientY : me.clientY;
       const pt = getSvgPoint(clientX, clientY);
       onShotsChange(
-        shots.map((s) => s.id === shotId ? { ...s, x: pt.x, y: pt.y } : s)
+        shotsRef.current.map((s) => s.id === shotId ? { ...s, x: pt.x, y: pt.y } : s)
       );
     };
 
@@ -70,24 +73,25 @@ export default function GreenDiagram({ shots, onShotsChange }) {
     window.addEventListener('mouseup', onUp);
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
-  }, [shots, onShotsChange, getSvgPoint]);
+  };
 
-  const handleDelete = useCallback((e, shotId) => {
+  const handleDelete = (e, shotId) => {
+    if (readOnly) return;
     e.stopPropagation();
     e.preventDefault();
-    onShotsChange(shots.filter((s) => s.id !== shotId));
-  }, [shots, onShotsChange]);
+    onShotsChange(shotsRef.current.filter((s) => s.id !== shotId));
+  };
 
-  // Ring radii in SVG units (proportional)
+  // Ring radii proportional to MAX_R
   const ringRadii = RINGS.map((ft) => (ft / RINGS[0]) * MAX_R);
 
   return (
-    <div className="relative select-none flex justify-center" style={{ userSelect: 'none' }}>
+    <div className="flex justify-center" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full touch-none"
-        style={{ maxWidth: 320, maxHeight: 320, display: 'block' }}
+        className="w-full"
+        style={{ maxWidth: 320, maxHeight: 320, display: 'block', touchAction: 'none' }}
         onClick={handleBgClick}
       >
         {/* Background */}
@@ -95,65 +99,56 @@ export default function GreenDiagram({ shots, onShotsChange }) {
 
         {/* Rough texture */}
         {Array.from({ length: 10 }).map((_, i) => (
-          <rect key={i} data-bg="true" x={0} y={i * 10} width={W} height={5} fill="rgba(0,80,0,0.05)" />
+          <rect key={i} data-bg="true" x={0} y={i * 10} width={W} height={5} fill="rgba(0,100,0,0.06)" />
         ))}
 
-        {/* Concentric rings (outer to inner) */}
+        {/* Concentric rings outer → inner */}
         {RINGS.map((ft, i) => (
           <circle
             key={ft}
-            cx={CX}
-            cy={CY}
+            cx={CX} cy={CY}
             r={ringRadii[i]}
             fill={RING_COLORS[i]}
             stroke="#15803d"
-            strokeWidth="0.5"
+            strokeWidth="0.6"
             data-bg="true"
           />
         ))}
 
-        {/* Inner highlight */}
-        <circle cx={CX} cy={CY} r={4} fill="#052e16" data-bg="true" />
-        <circle cx={CX} cy={CY} r={2.5} fill="#166534" data-bg="true" />
+        {/* Center cup */}
+        <circle cx={CX} cy={CY} r={4.5} fill="#052e16" data-bg="true" />
+        <circle cx={CX} cy={CY} r={3} fill="#166534" data-bg="true" />
 
         {/* Flag pin */}
-        <line x1={CX} y1={CY - 2} x2={CX} y2={CY - 18} stroke="#4b5563" strokeWidth="1" strokeLinecap="round" />
+        <line x1={CX} y1={CY - 3} x2={CX} y2={CY - 19}
+          stroke="#6b7280" strokeWidth="1.2" strokeLinecap="round" />
         <polygon
-          points={`${CX},${CY - 18} ${CX + 8},${CY - 14} ${CX},${CY - 10}`}
+          points={`${CX},${CY - 19} ${CX + 9},${CY - 14.5} ${CX},${CY - 10}`}
           fill="#ef4444"
         />
 
         {/* Ring distance labels */}
         {RINGS.map((ft, i) => (
-          <text
-            key={ft}
-            x={CX + ringRadii[i] - 1}
-            y={CY + 2}
-            textAnchor="end"
-            fontSize="4"
-            fill="rgba(255,255,255,0.9)"
-            fontWeight="600"
-            data-bg="true"
-          >
+          <text key={ft}
+            x={CX + ringRadii[i] - 1} y={CY + 2}
+            textAnchor="end" fontSize="4"
+            fill="rgba(255,255,255,0.85)" fontWeight="600"
+            data-bg="true">
             {ft}ft
           </text>
         ))}
 
-        {/* Compass dots */}
-        {['N', 'S', 'E', 'W'].map((dir, i) => {
-          const angle = (i * 90 - 90) * (Math.PI / 180);
-          const r = MAX_R + 6;
+        {/* Cardinal direction labels */}
+        {[['N', 0], ['E', 90], ['S', 180], ['W', 270]].map(([dir, deg]) => {
+          const angle = (deg - 90) * (Math.PI / 180);
+          const r = MAX_R + 6.5;
           return (
-            <text
-              key={dir}
+            <text key={dir}
               x={CX + r * Math.cos(angle)}
               y={CY + r * Math.sin(angle) + 1.5}
-              textAnchor="middle"
-              fontSize="4.5"
-              fill="#166534"
-              fontWeight="700"
-              data-bg="true"
-            >
+              textAnchor="middle" fontSize="4.5"
+              fill="#166534" fontWeight="700"
+              data-bg="true">
               {dir}
             </text>
           );
@@ -165,6 +160,7 @@ export default function GreenDiagram({ shots, onShotsChange }) {
             key={shot.id}
             shot={shot}
             isDragging={dragging === shot.id}
+            readOnly={readOnly}
             onPointerDown={(e) => handleMarkerPointerDown(e, shot.id)}
             onDelete={(e) => handleDelete(e, shot.id)}
           />
@@ -174,59 +170,54 @@ export default function GreenDiagram({ shots, onShotsChange }) {
   );
 }
 
-function GreenShotMarker({ shot, isDragging, onPointerDown, onDelete }) {
+function GreenShotMarker({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
   const cx = shot.x;
   const cy = shot.y;
   const r = 5;
+  const color = isDragging ? '#7c3aed' : '#92400e';
 
   return (
-    <g transform={`translate(${cx}, ${cy})`}>
-      {/* Shadow */}
-      <circle cx={0.5} cy={0.5} r={r + 1} fill="rgba(0,0,0,0.25)" />
+    <g transform={`translate(${cx},${cy})`}>
+      {/* Drop shadow */}
+      <circle cx={0.6} cy={0.6} r={r + 0.8} fill="rgba(0,0,0,0.25)" />
 
       {/* Main circle */}
       <circle
-        cx={0}
-        cy={0}
-        r={r}
-        fill={isDragging ? '#7c3aed' : '#92400e'}
+        cx={0} cy={0} r={r}
+        fill={color}
         stroke="white"
         strokeWidth="1"
-        onPointerDown={onPointerDown}
-        onTouchStart={onPointerDown}
-        style={{ cursor: 'grab' }}
+        onPointerDown={readOnly ? undefined : onPointerDown}
+        style={{ cursor: readOnly ? 'default' : 'grab' }}
       />
 
-      {/* X mark */}
-      <line x1={-2.5} y1={-2.5} x2={2.5} y2={2.5} stroke="white" strokeWidth="1.5" strokeLinecap="round"
-        style={{ pointerEvents: 'none' }} />
-      <line x1={2.5} y1={-2.5} x2={-2.5} y2={2.5} stroke="white" strokeWidth="1.5" strokeLinecap="round"
-        style={{ pointerEvents: 'none' }} />
+      {/* X lines */}
+      <line x1={-2.5} y1={-2.5} x2={2.5} y2={2.5}
+        stroke="white" strokeWidth="1.5" strokeLinecap="round" style={{ pointerEvents: 'none' }} />
+      <line x1={2.5} y1={-2.5} x2={-2.5} y2={2.5}
+        stroke="white" strokeWidth="1.5" strokeLinecap="round" style={{ pointerEvents: 'none' }} />
 
       {/* Shot number */}
-      <text
-        x={0}
-        y={r + 5}
-        textAnchor="middle"
-        fontSize="4.5"
-        fontWeight="700"
-        fill="#78350f"
-        style={{ pointerEvents: 'none' }}
-      >
+      <text x={0} y={r + 5.5} textAnchor="middle" fontSize="4.5"
+        fontWeight="700" fill="#78350f" style={{ pointerEvents: 'none' }}>
         {shot.shotNumber}
       </text>
 
       {/* Delete button */}
-      <g
-        transform={`translate(${r + 1}, ${-r - 1})`}
-        onClick={onDelete}
-        onTouchEnd={onDelete}
-        style={{ cursor: 'pointer' }}
-      >
-        <circle cx={0} cy={0} r={3.5} fill="#ef4444" stroke="white" strokeWidth="0.8" />
-        <line x1={-1.5} y1={-1.5} x2={1.5} y2={1.5} stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-        <line x1={1.5} y1={-1.5} x2={-1.5} y2={1.5} stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      </g>
+      {!readOnly && (
+        <g
+          transform={`translate(${r + 1.5},${-r - 1.5})`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onDelete}
+          style={{ cursor: 'pointer' }}
+        >
+          <circle cx={0} cy={0} r={3.5} fill="#ef4444" stroke="white" strokeWidth="0.8" />
+          <line x1={-1.5} y1={-1.5} x2={1.5} y2={1.5}
+            stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1={1.5} y1={-1.5} x2={-1.5} y2={1.5}
+            stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+        </g>
+      )}
     </g>
   );
 }
