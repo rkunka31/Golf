@@ -22,7 +22,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
   };
 
   return (
-    <div className="bg-white border-b border-gray-100 px-3 pt-3 pb-3">
+    <div className="bg-[#f8f9fb] border-b border-gray-100 px-3 pt-3 pb-3">
       {/* Hole nav + number */}
       <div className="flex items-center justify-between mb-3">
         <button
@@ -66,7 +66,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
       {/* Grid of KPIs */}
       <div className="grid grid-cols-2 gap-2">
         {/* Par */}
-        <div className="bg-gray-50 rounded-xl p-2.5">
+        <div className="bg-white border border-gray-100 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-2">Par</label>
           <div className="flex gap-1.5">
             {[3, 4, 5].map((p) => (
@@ -76,7 +76,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
                 className={[
                   'flex-1 py-1.5 rounded-lg text-sm font-bold transition-colors',
                   hole.par === p
-                    ? 'bg-green-700 text-white shadow'
+                    ? 'bg-green-600 text-white shadow'
                     : 'bg-white text-gray-500 border border-gray-200 active:bg-green-50',
                 ].join(' ')}
               >
@@ -87,7 +87,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
         </div>
 
         {/* Score */}
-        <div className="bg-gray-50 rounded-xl p-2.5">
+        <div className="bg-white border border-gray-100 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Score</label>
           <input
             type="number"
@@ -101,7 +101,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
         </div>
 
         {/* Putts */}
-        <div className="bg-gray-50 rounded-xl p-2.5">
+        <div className="bg-white border border-gray-100 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-2">Putts</label>
           <Stepper
             value={hole.putts}
@@ -112,7 +112,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
         </div>
 
         {/* Penalty Strokes */}
-        <div className="bg-gray-50 rounded-xl p-2.5">
+        <div className="bg-white border border-gray-100 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-2">Penalty</label>
           <Stepper
             value={hole.penaltyStrokes}
@@ -124,7 +124,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
 
         {/* Fairway Hit - only for par 4/5 */}
         {hole.par !== 3 && (
-          <div className="bg-gray-50 rounded-xl p-2.5">
+          <div className="bg-white border border-gray-100 rounded-xl p-2.5">
             <label className="block text-xs font-semibold text-gray-500 mb-2">Fairway Hit</label>
             <div className="flex gap-1.5">
               <button
@@ -154,7 +154,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
         )}
 
         {/* Approach Distance */}
-        <div className={`bg-gray-50 rounded-xl p-2.5 ${hole.par === 3 ? 'col-span-1' : ''}`}>
+        <div className={`bg-white border border-gray-100 rounded-xl p-2.5 ${hole.par === 3 ? 'col-span-1' : ''}`}>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Approach (yds)</label>
           <input
             type="number"
@@ -168,7 +168,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
         </div>
 
         {/* Club Used - horizontal scrollable button row */}
-        <div className="col-span-2 bg-gray-50 rounded-xl p-2.5">
+        <div className="col-span-2 bg-white border border-gray-100 rounded-xl p-2.5">
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Club Used</label>
           <div
             style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
@@ -181,7 +181,7 @@ export default function KPIPanel({ hole, onUpdate, onPrev, onNext, hasPrev, hasN
                 className={[
                   'px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 transition-colors',
                   hole.club === club
-                    ? 'bg-green-700 text-white'
+                    ? 'bg-green-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-600 active:bg-green-50',
                 ].join(' ')}
               >

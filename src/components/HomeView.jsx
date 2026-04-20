@@ -23,24 +23,23 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
   };
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-full bg-[#f8f9fb]">
       {/* Header */}
-      <div className="bg-green-800 text-white px-4 pt-10 pb-6">
+      <div className="bg-white px-4 pt-12 pb-6 border-b border-[#e5e7eb]">
         <div className="flex items-center gap-3 mb-1">
-          <svg className="w-8 h-8 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9V3m0 18v-6M3 12H9m12 0h-6" />
+          <svg className="w-8 h-8 text-[#15803d]" viewBox="0 0 24 24" fill="currentColor">
+            <path fillRule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.456.88 8.25 8.25 0 005.33.01l2.99-.976a.75.75 0 011.09.67v13.91a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V5.998l-2.25.734a9.75 9.75 0 01-6.304-.01 8.25 8.25 0 00-5.44-.745L3 6.466V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clipRule="evenodd" />
           </svg>
-          <h1 className="text-2xl font-bold tracking-tight">Golf Tracker</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#111827]">Golf Tracker</h1>
         </div>
-        <p className="text-green-300 text-sm">Track your rounds &amp; improve your game</p>
+        <p className="text-[#6b7280] text-sm">Track your rounds &amp; improve your game</p>
       </div>
 
       <div className="px-4 py-4">
         {/* New Round Button */}
         <button
           onClick={onNewRound}
-          className="w-full bg-green-700 hover:bg-green-600 active:bg-green-800 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors mb-6"
+          className="w-full bg-[#15803d] active:bg-[#166534] text-white font-semibold py-4 rounded-full flex items-center justify-center gap-2 shadow-sm transition-colors mb-6"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -59,17 +58,17 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
           </div>
         ) : (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Recent Rounds</h2>
+            <h2 className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-3">Recent Rounds</h2>
             {sorted.map((round) => {
               const scoreData = getRoundScore(round);
               return (
                 <div
                   key={round.id}
-                  className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden"
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
                 >
                   <button
                     onClick={() => onOpenRound(round.id, 1)}
-                    className="w-full text-left px-4 py-4 active:bg-green-50 transition-colors"
+                    className="w-full text-left px-4 py-4 active:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -78,20 +77,20 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
                             {round.tees ? round.tees.charAt(0).toUpperCase() + round.tees.slice(1) : '—'}
                           </span>
                           {round.conditions && (
-                            <span className="text-xs text-gray-400 truncate">{round.conditions}</span>
+                            <span className="text-xs text-[#6b7280] truncate">{round.conditions}</span>
                           )}
                         </div>
-                        <p className="font-semibold text-gray-800 text-lg leading-tight truncate">{round.course || 'Unnamed Course'}</p>
-                        <p className="text-sm text-gray-400 mt-0.5">{formatDate(round.date)}</p>
+                        <p className="font-bold text-[#111827] text-lg leading-tight truncate">{round.course || 'Unnamed Course'}</p>
+                        <p className="text-sm text-[#6b7280] mt-0.5">{formatDate(round.date)}</p>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
                         {scoreData ? (
                           <>
-                            <div className="text-2xl font-bold text-green-700">{scoreData.total}</div>
-                            <div className="text-xs text-gray-400">{scoreData.holes}/18 holes</div>
+                            <div className="text-2xl font-bold text-[#15803d]">{scoreData.total}</div>
+                            <div className="text-xs text-[#6b7280]">{scoreData.holes}/18 holes</div>
                           </>
                         ) : (
-                          <div className="text-sm text-gray-400 font-medium">In progress</div>
+                          <div className="text-sm text-[#6b7280] font-medium">In progress</div>
                         )}
                       </div>
                     </div>
@@ -117,7 +116,7 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
                       </div>
                     </div>
                   ) : (
-                    <div className="border-t border-gray-50 px-4 py-2 flex justify-end">
+                    <div className="border-t border-[#e5e7eb] px-4 py-2 flex justify-end">
                       <button
                         onClick={() => setConfirmDelete(round.id)}
                         className="text-xs text-gray-400 active:text-red-500 py-1 px-2"
