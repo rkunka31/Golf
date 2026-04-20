@@ -38,28 +38,33 @@ function GolfBallIcon({ size = 30 }) {
 }
 
 function ShotPin({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
+  if (readOnly) {
+    return (
+      <g transform={`translate(${shot.x},${shot.y})`}>
+        <circle r={1.8} fill="#111827" opacity={0.72} />
+      </g>
+    );
+  }
   const stroke = isDragging ? '#2563eb' : '#374151';
   const fill   = isDragging ? '#dbeafe' : 'white';
   return (
     <g transform={`translate(${shot.x},${shot.y})`}>
-      <ellipse cx={0.5} cy={0.5} rx={4} ry={1.8} fill="rgba(0,0,0,0.15)"/>
+      <ellipse cx={0.4} cy={0.4} rx={2.5} ry={1.3} fill="rgba(0,0,0,0.15)"/>
       <path
-        d="M 0 0 C -3.5 -3, -5 -6, -5 -9 C -5 -13, -2.5 -16, 0 -16 C 2.5 -16, 5 -13, 5 -9 C 5 -6, 3.5 -3, 0 0 Z"
-        fill={fill} stroke={stroke} strokeWidth="1.2"
-        onPointerDown={readOnly ? undefined : onPointerDown}
-        style={{ cursor: readOnly ? 'default' : 'grab' }}
+        d="M 0 0 C -2.45 -2.1, -3.5 -4.2, -3.5 -6.3 C -3.5 -9.1, -1.75 -11.2, 0 -11.2 C 1.75 -11.2, 3.5 -9.1, 3.5 -6.3 C 3.5 -4.2, 2.45 -2.1, 0 0 Z"
+        fill={fill} stroke={stroke} strokeWidth="1.0"
+        onPointerDown={onPointerDown}
+        style={{ cursor: 'grab' }}
       />
-      <circle cx={0} cy={-9} r={3} fill={stroke} style={{ pointerEvents: 'none' }}/>
-      <text x={0} y={-7} textAnchor="middle" fontSize="3.2" fontWeight="700"
+      <circle cx={0} cy={-6.3} r={2.1} fill={stroke} style={{ pointerEvents: 'none' }}/>
+      <text x={0} y={-5} textAnchor="middle" fontSize="2.5" fontWeight="700"
         fill="white" style={{ pointerEvents: 'none' }}>{shot.shotNumber}</text>
-      {!readOnly && (
-        <g transform="translate(5.5,-16.5)" onClick={onDelete}
-          onPointerDown={(e) => e.stopPropagation()} style={{ cursor: 'pointer' }}>
-          <circle cx={0} cy={0} r={3.2} fill="#ef4444" stroke="white" strokeWidth="0.7"/>
-          <line x1={-1.5} y1={-1.5} x2={1.5} y2={1.5} stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-          <line x1={1.5} y1={-1.5} x2={-1.5} y2={1.5} stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-        </g>
-      )}
+      <g transform="translate(3.8,-11.5)" onClick={onDelete}
+        onPointerDown={(e) => e.stopPropagation()} style={{ cursor: 'pointer' }}>
+        <circle cx={0} cy={0} r={2.3} fill="#ef4444" stroke="white" strokeWidth="0.7"/>
+        <line x1={-1.1} y1={-1.1} x2={1.1} y2={1.1} stroke="white" strokeWidth="1.0" strokeLinecap="round"/>
+        <line x1={1.1} y1={-1.1} x2={-1.1} y2={1.1} stroke="white" strokeWidth="1.0" strokeLinecap="round"/>
+      </g>
     </g>
   );
 }
@@ -160,7 +165,7 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
       {/* ── SVG ── */}
       <div className="flex justify-center py-4 bg-[#f8f9fb]">
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
-          style={{ width: '84vw', maxWidth: 340, display: 'block', touchAction: 'none' }}>
+          style={{ width: '84vw', maxWidth: 340, display: 'block' }}>
           <defs>
             <filter id="green-shadow">
               <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="rgba(0,0,0,0.1)"/>
@@ -170,8 +175,8 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
           {/* background */}
           <rect x="0" y="0" width={W} height={H} fill="#f8f9fb"/>
 
-          {/* outer fringe / context circle */}
-          <circle cx={CX} cy={CY} r={MAX_R + 5} fill="#ececee" filter="url(#green-shadow)"/>
+          {/* outer rough / fringe */}
+          <circle cx={CX} cy={CY} r={MAX_R + 5} fill="#3a5228" filter="url(#green-shadow)"/>
 
           {/* rings: outer→inner, alternating white/very-light-grey */}
           {RINGS.map(({ r }, i) => (

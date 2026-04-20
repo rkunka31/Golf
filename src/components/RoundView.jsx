@@ -28,11 +28,11 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
   return (
     <div className="min-h-full flex flex-col">
       {/* Round Header */}
-      <div className="bg-green-800 text-white px-4 pt-10 pb-3">
+      <div className="bg-gray-900 text-white px-4 pt-10 pb-3">
         <div className="flex items-center gap-2 mb-1">
           <button
             onClick={onBack}
-            className="p-2 -ml-2 rounded-full active:bg-green-700 transition-colors"
+            className="p-2 -ml-2 rounded-full active:bg-gray-700 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -45,12 +45,12 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
                 {round.tees}
               </span>
             </div>
-            <p className="text-green-300 text-xs">{formatDate(round.date)}{round.conditions ? ` · ${round.conditions}` : ''}</p>
+            <p className="text-gray-400 text-xs">{formatDate(round.date)}{round.conditions ? ` · ${round.conditions}` : ''}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setShowShare(true)}
-              className="p-2 rounded-full active:bg-green-700 transition-colors"
+              className="p-2 rounded-full active:bg-gray-700 transition-colors"
               title="Share round"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -70,7 +70,7 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
       </div>
 
       {/* Hole Tabs - Scrollable */}
-      <div className="bg-green-900 px-2 py-2">
+      <div className="bg-gray-900 px-2 py-2">
         <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5">
           {round.holes.map((h) => {
             const s = h.score !== null && h.score !== '' && !isNaN(Number(h.score)) ? Number(h.score) : null;
@@ -82,10 +82,10 @@ export default function RoundView({ round, activeHole, setActiveHole, updateHole
                 className={[
                   'flex-shrink-0 w-9 h-9 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-colors',
                   activeHole === h.holeNumber
-                    ? 'bg-white text-green-900 shadow'
+                    ? 'bg-white text-gray-900 shadow'
                     : s !== null
                     ? diffColor(diff) + ' text-white'
-                    : 'bg-green-700 text-green-200',
+                    : 'bg-gray-700 text-gray-300',
                 ].join(' ')}
               >
                 <span className="text-[10px] leading-none">{h.holeNumber}</span>
