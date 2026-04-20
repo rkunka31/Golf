@@ -280,7 +280,7 @@ function FairwayDispersion({ shots }) {
 
   return (
     <div>
-      <svg viewBox="0 0 100 210" className="w-full" style={{ maxHeight: 420, display: 'block' }}>
+      <svg viewBox="0 0 100 210" className="w-full" style={{ display: 'block' }}>
         {/* Dark background */}
         <rect x="0" y="0" width="100" height="210" fill="#1c2b1c" />
 
@@ -327,8 +327,8 @@ function GreenDispersion({ shots }) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
-      <svg viewBox="0 0 100 100" className="w-full" style={{ maxWidth: 320, maxHeight: 320, display: 'block' }}>
+    <div>
+      <svg viewBox="0 0 100 100" className="w-full" style={{ display: 'block' }}>
         {/* Dark background */}
         <rect x="0" y="0" width="100" height="100" fill="#1c2b1c" />
 

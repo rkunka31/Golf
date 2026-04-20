@@ -20,9 +20,9 @@ const OVL_CY = 113;
 const OVL_RX = 42; // wide
 const OVL_RY = 108;
 
-// Distance markers: y positions top→bottom, labels = yards from tee
+// Distance markers: y positions top→bottom, labels = yards from green (50 near green, 300 near tee)
 const MARKER_YS    = [13,  54,  92, 130, 169, 208];
-const MARKER_LABELS = [300, 250, 200, 150, 100,  50];
+const MARKER_LABELS = [ 50, 100, 150, 200, 250, 300];
 
 function getSvgCoords(svg, clientX, clientY) {
   const pt = svg.createSVGPoint();
@@ -220,8 +220,7 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
       )}
 
       {/* ── SVG diagram ── */}
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block"
-        style={{ touchAction: 'none' }}>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block">
         <defs>
           {/* diagonal hatch pattern inside oval */}
           <pattern id="fw-hatch" patternUnits="userSpaceOnUse" width="6" height="6"
@@ -269,6 +268,14 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
             </g>
           );
         })}
+
+        {/* GREEN label at top */}
+        <text x={OVL_CX} y={OVL_CY - OVL_RY + 10} textAnchor="middle"
+          fontSize="4.5" fill="#15803d" fontWeight="800" letterSpacing="0.3">▲ GREEN</text>
+
+        {/* TEE label at bottom */}
+        <text x={OVL_CX} y={OVL_CY + OVL_RY - 3} textAnchor="middle"
+          fontSize="4.5" fill="#374151" fontWeight="800" letterSpacing="0.3">TEE ▼</text>
 
         {/* zone labels */}
         {[['L', OVL_CX - OVL_RX * 0.55], ['C', OVL_CX], ['R', OVL_CX + OVL_RX * 0.55]].map(([lbl, x]) => (
@@ -370,4 +377,4 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
   );
 }
 
-const YARD_SPAN = MARKER_LABELS[0] - MARKER_LABELS[MARKER_LABELS.length - 1]; // 250
+const YARD_SPAN = MARKER_LABELS[MARKER_LABELS.length - 1] - MARKER_LABELS[0]; // 250
