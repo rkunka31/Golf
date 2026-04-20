@@ -16,6 +16,9 @@ export default function NewRound({ onSave, onCancel }) {
   const [date, setDate] = useState(todayISO());
   const [tees, setTees] = useState('blue');
   const [conditions, setConditions] = useState('');
+  const [notes, setNotes] = useState('');
+  const [courseRating, setCourseRating] = useState('');
+  const [slope, setSlope] = useState('');
 
   const handleSave = () => {
     const round = {
@@ -24,6 +27,9 @@ export default function NewRound({ onSave, onCancel }) {
       date,
       tees,
       conditions: conditions.trim(),
+      notes: notes.trim(),
+      courseRating: courseRating ? Number(courseRating) : null,
+      slope: slope ? Number(slope) : null,
       holes: createEmptyHoles(),
     };
     onSave(round);
@@ -100,6 +106,53 @@ export default function NewRound({ onSave, onCancel }) {
             onChange={(e) => setConditions(e.target.value)}
             placeholder="e.g. Windy, Wet fairways..."
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Course Rating + Slope */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Course Rating <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="60"
+              max="80"
+              value={courseRating}
+              onChange={(e) => setCourseRating(e.target.value)}
+              placeholder="71.2"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Slope <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min="55"
+              max="155"
+              value={slope}
+              onChange={(e) => setSlope(e.target.value)}
+              placeholder="128"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Notes <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Goals, reminders, observations..."
+            rows={3}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
           />
         </div>
 

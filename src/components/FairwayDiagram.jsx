@@ -1,6 +1,15 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { generateId } from '../utils/uuid';
 
+const SHAPES = ['Straight', 'Draw', 'Fade', 'Hook', 'Slice'];
+const SHAPE_COLORS = {
+  Straight: '#6b7280',
+  Draw: '#2563eb',
+  Fade: '#d97706',
+  Hook: '#dc2626',
+  Slice: '#7c3aed',
+};
+
 // ViewBox: wide enough to fill screen, tall for usability
 const W = 100;
 const H = 230;
@@ -11,9 +20,9 @@ const OVL_CY = 113;
 const OVL_RX = 42; // wide
 const OVL_RY = 108;
 
-// Distance markers: y positions top→bottom, labels = yards from tee
+// Distance markers: y positions top→bottom, labels = yards from green (50 near green, 300 near tee)
 const MARKER_YS    = [13,  54,  92, 130, 169, 208];
-const MARKER_LABELS = [300, 250, 200, 150, 100,  50];
+const MARKER_LABELS = [ 50, 100, 150, 200, 250, 300];
 
 function getSvgCoords(svg, clientX, clientY) {
   const pt = svg.createSVGPoint();
@@ -70,6 +79,10 @@ function ShotPin({ shot, isDragging, readOnly, onPointerDown, onDelete }) {
       {/* shot number */}
       <text x={0} y={-7} textAnchor="middle" fontSize="3.2" fontWeight="700"
         fill="white" style={{ pointerEvents: 'none' }}>{shot.shotNumber}</text>
+      {/* shape dot below pin tip */}
+      {shot.shape && SHAPE_COLORS[shot.shape] && (
+        <circle cx={0} cy={3} r={2} fill={SHAPE_COLORS[shot.shape]} style={{ pointerEvents: 'none' }} />
+      )}
       {/* delete button */}
       {!readOnly && (
         <g transform="translate(5.5,-16.5)" onClick={onDelete}
@@ -90,6 +103,17 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
   const [showSummary, setShowSummary] = useState(false);
   const shotsRef = useRef(shots);
   useEffect(() => { shotsRef.current = shots; }, [shots]);
+
+  const setLastShotShape = useCallback((shape) => {
+    const cur = shotsRef.current;
+    if (!cur.length) return;
+    const maxNum = Math.max(...cur.map(s => s.shotNumber));
+    onShotsChange(cur.map(s => s.shotNumber === maxNum ? { ...s, shape } : s));
+  }, [onShotsChange]);
+
+  const lastShot = shots.length > 0
+    ? [...shots].sort((a, b) => b.shotNumber - a.shotNumber)[0]
+    : null;
 
   // ── drag existing marker ──
   const handleMarkerDown = useCallback((e, id) => {
@@ -180,9 +204,23 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
         </div>
       )}
 
+      {/* ── shape selector row ── */}
+      {!readOnly && shots.length > 0 && (
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 overflow-x-auto">
+          <span className="text-gray-400 text-xs flex-shrink-0">Shape:</span>
+          {SHAPES.map(shape => (
+            <button key={shape}
+              onClick={() => setLastShotShape(shape)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 transition-colors
+                ${lastShot?.shape === shape ? 'text-white' : 'bg-gray-700 text-gray-400'}`}
+              style={lastShot?.shape === shape ? { backgroundColor: SHAPE_COLORS[shape] } : {}}
+            >{shape}</button>
+          ))}
+        </div>
+      )}
+
       {/* ── SVG diagram ── */}
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block"
-        style={{ touchAction: 'none' }}>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block">
         <defs>
           {/* diagonal hatch pattern inside oval */}
           <pattern id="fw-hatch" patternUnits="userSpaceOnUse" width="6" height="6"
@@ -230,6 +268,14 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
             </g>
           );
         })}
+
+        {/* GREEN label at top */}
+        <text x={OVL_CX} y={OVL_CY - OVL_RY + 10} textAnchor="middle"
+          fontSize="4.5" fill="#15803d" fontWeight="800" letterSpacing="0.3">▲ GREEN</text>
+
+        {/* TEE label at bottom */}
+        <text x={OVL_CX} y={OVL_CY + OVL_RY - 3} textAnchor="middle"
+          fontSize="4.5" fill="#374151" fontWeight="800" letterSpacing="0.3">TEE ▼</text>
 
         {/* zone labels */}
         {[['L', OVL_CX - OVL_RX * 0.55], ['C', OVL_CX], ['R', OVL_CX + OVL_RX * 0.55]].map(([lbl, x]) => (
@@ -331,4 +377,4 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
   );
 }
 
-const YARD_SPAN = MARKER_LABELS[0] - MARKER_LABELS[MARKER_LABELS.length - 1]; // 250
+const YARD_SPAN = MARKER_LABELS[MARKER_LABELS.length - 1] - MARKER_LABELS[0]; // 250

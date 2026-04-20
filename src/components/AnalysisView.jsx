@@ -234,10 +234,16 @@ export default function AnalysisView({ rounds }) {
         {/* Club Frequency */}
         <ClubFrequency holes={filteredHoles} />
 
+        {/* Club Distances */}
+        <ClubDistances holes={filteredHoles} />
+
         {/* Scorecard */}
         {selectedRound !== 'all' && (
           <Scorecard round={rounds.find((r) => r.id === selectedRound)} />
         )}
+
+        {/* Handicap Tracker */}
+        <HandicapTracker rounds={rounds} />
       </div>
     </div>
   );
@@ -274,7 +280,7 @@ function FairwayDispersion({ shots }) {
 
   return (
     <div>
-      <svg viewBox="0 0 100 210" className="w-full" style={{ maxHeight: 420, display: 'block' }}>
+      <svg viewBox="0 0 100 210" className="w-full" style={{ display: 'block' }}>
         {/* Dark background */}
         <rect x="0" y="0" width="100" height="210" fill="#1c2b1c" />
 
@@ -321,8 +327,8 @@ function GreenDispersion({ shots }) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
-      <svg viewBox="0 0 100 100" className="w-full" style={{ maxWidth: 320, maxHeight: 320, display: 'block' }}>
+    <div>
+      <svg viewBox="0 0 100 100" className="w-full" style={{ display: 'block' }}>
         {/* Dark background */}
         <rect x="0" y="0" width="100" height="100" fill="#1c2b1c" />
 
@@ -517,6 +523,108 @@ function Scorecard({ round }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ClubDistances({ holes }) {
+  const clubData = {};
+  holes.forEach(h => {
+    if (h.club && h.approachDistance && Number(h.approachDistance) > 0) {
+      if (!clubData[h.club]) clubData[h.club] = [];
+      clubData[h.club].push(Number(h.approachDistance));
+    }
+  });
+
+  const entries = Object.entries(clubData)
+    .map(([club, dists]) => ({
+      club,
+      avg: Math.round(dists.reduce((a, b) => a + b, 0) / dists.length),
+      count: dists.length,
+      min: Math.min(...dists),
+      max: Math.max(...dists),
+    }))
+    .sort((a, b) => b.avg - a.avg);
+
+  if (entries.length === 0) return null;
+  const maxAvg = entries[0].avg;
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">Club Distances</h3>
+      <div className="space-y-2.5">
+        {entries.map(({ club, avg, count, min, max }) => (
+          <div key={club}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-700 w-10 flex-shrink-0">{club}</span>
+              <div className="flex-1 relative h-5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full transition-all"
+                  style={{ width: `${(avg / maxAvg) * 100}%` }} />
+              </div>
+              <span className="text-sm font-bold text-gray-800 w-10 text-right">{avg}y</span>
+              <span className="text-xs text-gray-400 w-12 text-right">({count}x)</span>
+            </div>
+            <div className="flex justify-end pr-[88px] mt-0.5">
+              <span className="text-[10px] text-gray-400">{min}–{max}y</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HandicapTracker({ rounds }) {
+  const diffs = rounds
+    .filter(r => r.courseRating && r.slope)
+    .map(r => {
+      const score = r.holes.reduce((s, h) => s + (h.score ? Number(h.score) : 0), 0);
+      if (!score) return null;
+      const diff = +((score - r.courseRating) * 113 / r.slope).toFixed(1);
+      return { date: r.date, course: r.course, diff, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (diffs.length === 0) return null;
+
+  const sorted = [...diffs].sort((a, b) => a.diff - b.diff);
+  const best8 = sorted.slice(0, Math.min(8, sorted.length));
+  const hcpIndex = best8.length >= 3
+    ? +(best8.reduce((s, d) => s + d.diff, 0) / best8.length * 0.96).toFixed(1)
+    : null;
+
+  const maxAbs = Math.max(...diffs.map(d => Math.abs(d.diff)), 1);
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">Handicap Differential</h3>
+        {hcpIndex !== null && (
+          <div className="bg-green-50 px-3 py-1 rounded-full">
+            <span className="text-xs text-green-700 font-bold">Est. Index: {hcpIndex}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex items-end gap-1.5 h-20">
+        {diffs.map((d, i) => {
+          const isPositive = d.diff >= 0;
+          const barH = Math.round((Math.abs(d.diff) / maxAbs) * 36);
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+              <span className="text-[9px] text-gray-500">{d.diff > 0 ? '+' : ''}{d.diff}</span>
+              <div className={`w-full rounded-sm ${isPositive ? 'bg-red-400' : 'bg-green-500'}`}
+                style={{ height: Math.max(barH, 3) }} />
+              <span className="text-[8px] text-gray-400 truncate w-full text-center">
+                {d.date.slice(5)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {hcpIndex === null && (
+        <p className="text-xs text-gray-400 text-center mt-2">Need 3+ rounds with course rating/slope</p>
+      )}
     </div>
   );
 }

@@ -57,6 +57,9 @@ export default function App() {
               storage.updateHole(activeRoundId, holeNumber, updater)
             }
             onBack={() => setView('home')}
+            onUpdateNotes={(text) =>
+              storage.updateRound(activeRoundId, (r) => ({ ...r, notes: text }))
+            }
           />
         )}
         {view === 'analysis' && (
