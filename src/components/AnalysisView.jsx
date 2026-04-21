@@ -388,14 +388,19 @@ function FairwayDispersion({ holes }) {
 }
 
 // ---- Green Dispersion ----
-const GRN_CX  = 50;
-const GRN_MAX_R = 42;
-const GRN_MAX_FT = 30;
+// Constants must match GreenDiagram: GRN_CX=50, GRN_CY=25, GRN_R=20, APPR_TOP_Y=45
+const GRN_DISP_CX     = 50;
+const GRN_DISP_CY     = 25;
+const GRN_DISP_MAX_R  = 20;
+const GRN_DISP_MAX_FT = 30;
+const GRN_DISP_TOP_Y  = 45; // shots below this are approach shots, not putting
 
 function GreenDispersion({ shots }) {
-  const dots = shots.map(s => ({
-    dist:    Math.sqrt((s.x - GRN_CX) ** 2 + (s.y - GRN_CX) ** 2) / GRN_MAX_R * GRN_MAX_FT,
-    lateral: (s.x - GRN_CX) / GRN_MAX_R * GRN_MAX_FT,
+  // Only show shots that landed on or near the green, not approach shots
+  const greenShots = shots.filter(s => s.y < GRN_DISP_TOP_Y + 10);
+  const dots = greenShots.map(s => ({
+    dist:    Math.sqrt((s.x - GRN_DISP_CX) ** 2 + (s.y - GRN_DISP_CY) ** 2) / GRN_DISP_MAX_R * GRN_DISP_MAX_FT,
+    lateral: (s.x - GRN_DISP_CX) / GRN_DISP_MAX_R * GRN_DISP_MAX_FT,
   }));
 
   const VW = 120, VH = 140;

@@ -9,6 +9,8 @@ const SHAPE_COLORS = {
   Hook: '#dc2626',
   Slice: '#7c3aed',
 };
+// Right-handed: Draw/Hook curve left (positive), Fade/Slice curve right (negative)
+const SHAPE_CURVE = { Straight: 0, Draw: 5, Fade: -5, Hook: 12, Slice: -12 };
 
 const W = 100;
 const H = 108;
@@ -16,10 +18,8 @@ const OVL_CX = 50;
 const OVL_CY = 55;
 const OVL_RX = 17;
 const OVL_RY = 38;
-const GREEN_CY = 7;
-const GREEN_R  = 6;
-const TEE_Y    = 100;
-const TEE_R    = 3.5;
+const TEE_Y  = 100;
+const TEE_R  = 3.5;
 
 const MARKERS = [
   { yd: 300, y: 19 },
@@ -42,6 +42,14 @@ function getSvgCoords(svg, clientX, clientY) {
     x: (clientX - rect.left) * (vb.width  / rect.width),
     y: (clientY - rect.top)  * (vb.height / rect.height),
   };
+}
+
+function curveCP(x1, y1, x2, y2, curvature) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  if (!curvature) return { cpx: mx, cpy: my };
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  return { cpx: mx + (dy / len) * curvature, cpy: my + (-dx / len) * curvature };
 }
 
 function getDistLabel(shots) {
@@ -148,9 +156,7 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
       const svg = svgRef.current;
       if (svg) {
         const pt = getSvgCoords(svg, me.clientX, me.clientY);
-        const dx = pt.x - OVL_CX, dy = pt.y - OVL_CY;
-        const inOval = (dx * dx) / (OVL_RX * OVL_RX) + (dy * dy) / (OVL_RY * OVL_RY) <= 1.3;
-        if (inOval) {
+        if (pt.x >= 0 && pt.x <= W && pt.y >= 0 && pt.y <= H) {
           const cur = shotsRef.current;
           onShotsChange([...cur, { id: generateId(), x: pt.x, y: pt.y, shotNumber: cur.length + 1 }]);
         }
@@ -231,18 +237,6 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
 
           <rect x="0" y="0" width={W} height={H} fill="#f5f5f2"/>
 
-          {/* green at top */}
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}              fill="#d4d4d0"/>
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65}       fill="#e6e6e2"/>
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35}       fill="#f2f2ef"/>
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}              fill="none" stroke="#2a2a2a" strokeWidth="0.7"/>
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65}       fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
-          <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35}       fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
-          <line x1={OVL_CX} y1={GREEN_CY + 1.5} x2={OVL_CX} y2={GREEN_CY - 5}
-            stroke="#1a1a1a" strokeWidth="0.6" strokeLinecap="round"/>
-          <polygon points={`${OVL_CX},${GREEN_CY-5} ${OVL_CX+3},${GREEN_CY-3} ${OVL_CX},${GREEN_CY-1}`}
-            fill="#ef4444"/>
-
           {/* fairway oval */}
           <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY} fill="white"/>
           <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
@@ -264,22 +258,29 @@ export default function FairwayDiagram({ shots, onShotsChange, readOnly }) {
             );
           })}
 
-          {/* dotted tee-to-first shot line */}
-          {!readOnly && sorted.length > 0 && (
-            <line x1={OVL_CX} y1={TEE_Y - TEE_R} x2={sorted[0].x} y2={sorted[0].y}
-              stroke="#111827" strokeWidth="0.5" strokeDasharray="2,2"/>
-          )}
+          {/* dotted tee-to-first shot line with shot shape curve */}
+          {!readOnly && sorted.length > 0 && (() => {
+            const s = sorted[0];
+            const curvature = SHAPE_CURVE[s.shape] || 0;
+            const { cpx, cpy } = curveCP(OVL_CX, TEE_Y - TEE_R, s.x, s.y, curvature);
+            return (
+              <path d={`M ${OVL_CX},${TEE_Y - TEE_R} Q ${cpx},${cpy} ${s.x},${s.y}`}
+                stroke="#111827" fill="none" strokeWidth="0.5" strokeDasharray="2,2"/>
+            );
+          })()}
 
-          {/* connecting lines (active only) */}
+          {/* connecting lines with shot shape curves */}
           {!readOnly && sorted.length > 1 && sorted.map((shot, i) => {
             if (i === 0) return null;
             const prev = sorted[i - 1];
+            const curvature = SHAPE_CURVE[shot.shape] || 0;
+            const { cpx, cpy } = curveCP(prev.x, prev.y, shot.x, shot.y, curvature);
             const mx = (prev.x + shot.x) / 2, my = (prev.y + shot.y) / 2;
             const yds = Math.round(Math.abs(shot.y - prev.y) / PX_PER_YD);
             return (
               <g key={`conn-${shot.id}`}>
-                <line x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
-                  stroke="#111827" strokeWidth="0.5" strokeDasharray="2,2"/>
+                <path d={`M ${prev.x},${prev.y} Q ${cpx},${cpy} ${shot.x},${shot.y}`}
+                  stroke="#111827" fill="none" strokeWidth="0.5" strokeDasharray="2,2"/>
                 <text x={mx + 2} y={my} fontSize="3" fill="#374151" fontWeight="600">{yds}y</text>
               </g>
             );
