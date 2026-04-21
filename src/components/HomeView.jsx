@@ -91,12 +91,16 @@ export default function HomeView({ rounds, onNewRound, onOpenRound, onDeleteRoun
       {/* Header */}
       <div className="bg-white px-4 pt-12 pb-6 border-b border-[#e5e7eb]">
         <div className="flex items-center gap-3 mb-1">
-          <svg className="w-8 h-8 text-[#15803d]" viewBox="0 0 24 24" fill="currentColor">
-            <path fillRule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.456.88 8.25 8.25 0 005.33.01l2.99-.976a.75.75 0 011.09.67v13.91a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V5.998l-2.25.734a9.75 9.75 0 01-6.304-.01 8.25 8.25 0 00-5.44-.745L3 6.466V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clipRule="evenodd" />
+          {/* Pinpoint logo mark: target circles + pin */}
+          <svg viewBox="0 0 32 34" className="w-8 h-8" fill="none">
+            <circle cx="16" cy="14" r="12" stroke="#111827" strokeWidth="1.8"/>
+            <circle cx="16" cy="14" r="7"  stroke="#111827" strokeWidth="1.4"/>
+            <circle cx="16" cy="14" r="2.5" fill="#111827"/>
+            <line x1="16" y1="26" x2="16" y2="33" stroke="#111827" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111827]">Golf Tracker</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#111827]">Pinpoint</h1>
         </div>
-        <p className="text-[#6b7280] text-sm">Track your rounds &amp; improve your game</p>
+        <p className="text-[#6b7280] text-sm">Every shot, pinpointed.</p>
       </div>
 
       <div className="px-4 py-4">

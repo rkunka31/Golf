@@ -6,24 +6,37 @@ import { calcRoundSG } from '../utils/strokesGained';
 
 export default function AnalysisView({ rounds }) {
   const [selectedRound, setSelectedRound] = useState('all');
+  const [selectedCourse, setSelectedCourse] = useState('all');
   const [selectedHole, setSelectedHole] = useState('all');
   const [fairwayViewMode, setFairwayViewMode] = useState('realistic'); // 'realistic' | 'dispersion'
   const [greenViewMode, setGreenViewMode] = useState('realistic');     // 'realistic' | 'dispersion'
 
-  // Build rounds options
-  const roundOptions = [
-    { value: 'all', label: 'All Rounds' },
-    ...rounds.map((r) => ({
-      value: r.id,
-      label: `${r.course || 'Unnamed'} — ${formatDate(r.date)}`,
-    })),
-  ];
+  // Unique courses
+  const courseOptions = useMemo(() => {
+    const courses = [...new Set(rounds.map(r => r.course).filter(Boolean))].sort();
+    return ['all', ...courses];
+  }, [rounds]);
 
-  // Filter holes
+  // Round options filtered by selected course
+  const roundOptions = useMemo(() => {
+    const courseRounds = selectedCourse === 'all'
+      ? rounds
+      : rounds.filter(r => r.course === selectedCourse);
+    return [
+      { value: 'all', label: 'All Rounds' },
+      ...courseRounds.map((r) => ({
+        value: r.id,
+        label: `${r.course || 'Unnamed'} — ${formatDate(r.date)}`,
+      })),
+    ];
+  }, [rounds, selectedCourse]);
+
+  // Filter holes by course → round → hole
   const filteredHoles = useMemo(() => {
     let holes = [];
-    const filtered = selectedRound === 'all' ? rounds : rounds.filter((r) => r.id === selectedRound);
-    filtered.forEach((r) => {
+    let active = selectedCourse === 'all' ? rounds : rounds.filter(r => r.course === selectedCourse);
+    if (selectedRound !== 'all') active = active.filter(r => r.id === selectedRound);
+    active.forEach((r) => {
       r.holes.forEach((h) => {
         if (selectedHole === 'all' || Number(selectedHole) === h.holeNumber) {
           holes.push({ ...h, roundId: r.id, roundCourse: r.course, roundDate: r.date });
@@ -31,7 +44,7 @@ export default function AnalysisView({ rounds }) {
       });
     });
     return holes;
-  }, [rounds, selectedRound, selectedHole]);
+  }, [rounds, selectedRound, selectedCourse, selectedHole]);
 
   // Stats
   const stats = useMemo(() => {
@@ -126,14 +139,27 @@ export default function AnalysisView({ rounds }) {
 
       <div className="px-4 py-4 space-y-4">
         {/* Filters */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-green-100 space-y-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <h2 className="text-sm font-semibold text-gray-700">Filters</h2>
+          <div>
+            <label className="text-xs text-gray-500 font-medium block mb-1">Course</label>
+            <select
+              value={selectedCourse}
+              onChange={(e) => { setSelectedCourse(e.target.value); setSelectedRound('all'); }}
+              className="w-full py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              <option value="all">All Courses</option>
+              {courseOptions.filter(c => c !== 'all').map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="text-xs text-gray-500 font-medium block mb-1">Round</label>
             <select
               value={selectedRound}
               onChange={(e) => setSelectedRound(e.target.value)}
-              className="w-full py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               {roundOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -145,7 +171,7 @@ export default function AnalysisView({ rounds }) {
             <select
               value={selectedHole}
               onChange={(e) => setSelectedHole(e.target.value)}
-              className="w-full py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               <option value="all">All Holes</option>
               {Array.from({ length: 18 }, (_, i) => (
@@ -190,7 +216,7 @@ export default function AnalysisView({ rounds }) {
             {fairwayViewMode === 'realistic' ? (
               <FairwayDiagram shots={allFairwayShots} onShotsChange={noop} readOnly />
             ) : (
-              <FairwayDispersion shots={allFairwayShots} />
+              <FairwayDispersion holes={filteredHoles} />
             )}
           </div>
         )}
@@ -264,111 +290,175 @@ function ViewToggle({ mode, onChange }) {
 }
 
 // ---- Fairway Dispersion ----
-// Mirrors the FairwayDiagram layout constants so dispersion dots land in the right places
-const FW_D = {
-  W: 100, H: 175,
-  OVL_CX: 50, OVL_CY: 90, OVL_RX: 22, OVL_RY: 56,
-  GREEN_CY: 12, GREEN_R: 11,
-  TEE_Y: 160, TEE_R: 5,
-  MARKERS: [
-    { yd: 300, y: 38 }, { yd: 250, y: 59 }, { yd: 200, y: 80 },
-    { yd: 150, y: 100 }, { yd: 100, y: 121 }, { yd: 50, y: 142 },
-  ],
-};
+// Must match FairwayDiagram constants exactly so SVG y positions interpolate correctly
+const FW_MARKERS = [
+  { yd: 300, y: 19 }, { yd: 250, y: 33 }, { yd: 200, y: 47 },
+  { yd: 150, y: 62 }, { yd: 100, y: 76 }, { yd: 50,  y: 90 },
+];
+const FW_OVL_CX = 50;
+const FW_OVL_RX = 17;
+const FW_HALF_YDS = 20; // approx half-width of fairway in yards
 
-function FairwayDispersion({ shots }) {
-  const { W, H, OVL_CX, OVL_CY, OVL_RX, OVL_RY, GREEN_CY, GREEN_R, TEE_Y, TEE_R, MARKERS } = FW_D;
+function yardsFromSvgY(svgY) {
+  for (let i = 0; i < FW_MARKERS.length - 1; i++) {
+    const a = FW_MARKERS[i], b = FW_MARKERS[i + 1];
+    if (svgY >= a.y && svgY <= b.y) {
+      const t = (svgY - a.y) / (b.y - a.y);
+      return a.yd + t * (b.yd - a.yd);
+    }
+  }
+  return svgY < FW_MARKERS[0].y ? FW_MARKERS[0].yd : FW_MARKERS[FW_MARKERS.length - 1].yd;
+}
+
+function FairwayDispersion({ holes }) {
+  // Build per-shot (dist_traveled, lateral) pairs
+  const dots = [];
+  holes.forEach(hole => {
+    const shots = (hole.fairwayShots || []).sort((a, b) => a.shotNumber - b.shotNumber);
+    shots.forEach((shot, i) => {
+      const toYds   = yardsFromSvgY(shot.y);
+      const fromYds = i === 0 ? 0 : yardsFromSvgY(shots[i - 1].y);
+      const dist    = i === 0 ? toYds : Math.max(0, fromYds - toYds);
+      const lateral = (shot.x - FW_OVL_CX) / FW_OVL_RX * FW_HALF_YDS;
+      dots.push({ dist, lateral });
+    });
+  });
+
+  // Chart layout
+  const VW = 130, VH = 148;
+  const pl = 36, pr = 10, pt = 18, pb = 30;
+  const cW = VW - pl - pr;  // 84
+  const cH = VH - pt - pb;  // 100
+  const maxYds = 320, maxLat = 30;
+  const cx0 = pl + cW / 2;
+
+  const pY = d  => pt + cH - Math.min(d / maxYds, 1.05) * cH;
+  const pX = lat => pl + ((lat + maxLat) / (2 * maxLat)) * cW;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full block">
-      <defs>
-        <pattern id="fw-hatch-d" patternUnits="userSpaceOnUse" width="4" height="4"
-          patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="4" stroke="#c4c4c0" strokeWidth="0.7"/>
-        </pattern>
-        <clipPath id="fw-oval-clip-d">
-          <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}/>
-        </clipPath>
-      </defs>
-      <rect x="0" y="0" width={W} height={H} fill="#f5f5f2"/>
-      {/* green */}
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}        fill="#d4d4d0"/>
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65} fill="#e6e6e2"/>
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35} fill="#f2f2ef"/>
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R}        fill="none" stroke="#2a2a2a" strokeWidth="0.7"/>
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.65} fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
-      <circle cx={OVL_CX} cy={GREEN_CY} r={GREEN_R * 0.35} fill="none" stroke="#7a7a76" strokeWidth="0.35"/>
-      <line x1={OVL_CX} y1={GREEN_CY + 2} x2={OVL_CX} y2={GREEN_CY - 7}
-        stroke="#1a1a1a" strokeWidth="0.7" strokeLinecap="round"/>
-      <polygon points={`${OVL_CX},${GREEN_CY-7} ${OVL_CX+4},${GREEN_CY-4.5} ${OVL_CX},${GREEN_CY-2}`}
-        fill="#ef4444"/>
-      {/* oval */}
-      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY} fill="white"/>
-      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
-        fill="url(#fw-hatch-d)" clipPath="url(#fw-oval-clip-d)"/>
-      <ellipse cx={OVL_CX} cy={OVL_CY} rx={OVL_RX} ry={OVL_RY}
-        fill="none" stroke="#2a2a2a" strokeWidth="0.7"/>
-      {/* distance markers */}
-      {MARKERS.map(({ yd, y }) => {
-        const dy = y - OVL_CY;
-        const chord = OVL_RX * Math.sqrt(Math.max(0, 1 - (dy * dy) / (OVL_RY * OVL_RY)));
-        return (
-          <g key={yd}>
-            <line x1={OVL_CX - chord} y1={y} x2={OVL_CX + chord} y2={y}
-              stroke="#a8a8a4" strokeWidth="0.4" strokeDasharray="1.5,2"/>
-            <text x={OVL_CX + chord + 1.5} y={y + 1.3} fontSize="3" fill="#4a4a46" fontWeight="500">{yd}</text>
-          </g>
-        );
-      })}
-      {/* tee */}
-      <circle cx={OVL_CX} cy={TEE_Y} r={TEE_R}           fill="#1a1a1a"/>
-      <circle cx={OVL_CX} cy={TEE_Y} r={TEE_R * 0.42}    fill="white" opacity={0.35}/>
-      {/* shot dots */}
-      {shots.map((shot) => (
-        <circle key={shot.id} cx={shot.x} cy={shot.y} r={2} fill="#111827"/>
+    <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full block" style={{ background: '#f5f5f2' }}>
+      {/* plot background */}
+      <rect x={pl} y={pt} width={cW} height={cH} fill="white" stroke="#e0e0dc" strokeWidth="0.5"/>
+
+      {/* fairway band ±10 yds shading */}
+      <rect x={pX(-10)} y={pt} width={pX(10) - pX(-10)} height={cH}
+        fill="#e8f0e8" opacity="0.9"/>
+
+      {/* horizontal gridlines */}
+      {[100, 150, 200, 250, 300].map(yd => (
+        <g key={yd}>
+          <line x1={pl} y1={pY(yd)} x2={pl + cW} y2={pY(yd)}
+            stroke="#d0d0cc" strokeWidth="0.4" strokeDasharray="2,2"/>
+          <text x={pl - 2} y={pY(yd) + 1.2} textAnchor="end" fontSize="4" fill="#6a6a66">{yd}</text>
+        </g>
       ))}
+
+      {/* center vertical line */}
+      <line x1={cx0} y1={pt} x2={cx0} y2={pt + cH}
+        stroke="#a0a09a" strokeWidth="0.5" strokeDasharray="2,2"/>
+
+      {/* axes */}
+      <line x1={pl} y1={pt + cH} x2={pl + cW} y2={pt + cH} stroke="#2a2a2a" strokeWidth="0.7"/>
+      <line x1={pl} y1={pt}      x2={pl}       y2={pt + cH} stroke="#2a2a2a" strokeWidth="0.7"/>
+
+      {/* x-axis labels */}
+      <text x={pl + 2}      y={pt + cH + 9} textAnchor="start" fontSize="4" fill="#555550">← Left</text>
+      <text x={cx0}         y={pt + cH + 9} textAnchor="middle" fontSize="4" fill="#555550">Center</text>
+      <text x={pl + cW - 2} y={pt + cH + 9} textAnchor="end"   fontSize="4" fill="#555550">Right →</text>
+
+      {/* y-axis title */}
+      <text fontSize="4" fill="#555550" fontWeight="500"
+        transform={`rotate(-90) translate(${-(pt + cH / 2)}, 9)`} textAnchor="middle">
+        Yards
+      </text>
+
+      {/* dots */}
+      {dots.map((d, i) => (
+        <circle key={i}
+          cx={Math.max(pl + 2, Math.min(pl + cW - 2, pX(d.lateral)))}
+          cy={Math.max(pt + 2, Math.min(pt + cH - 2, pY(d.dist)))}
+          r={2.5} fill="#111827" opacity={0.65}/>
+      ))}
+
+      {dots.length === 0 && (
+        <text x={VW / 2} y={VH / 2} textAnchor="middle" fontSize="6" fill="#9ca3af">No data</text>
+      )}
     </svg>
   );
 }
 
 // ---- Green Dispersion ----
+const GRN_CX  = 50;
+const GRN_MAX_R = 42;
+const GRN_MAX_FT = 30;
+
 function GreenDispersion({ shots }) {
+  const dots = shots.map(s => ({
+    dist:    Math.sqrt((s.x - GRN_CX) ** 2 + (s.y - GRN_CX) ** 2) / GRN_MAX_R * GRN_MAX_FT,
+    lateral: (s.x - GRN_CX) / GRN_MAX_R * GRN_MAX_FT,
+  }));
+
+  const VW = 120, VH = 140;
+  const pl = 34, pr = 10, pt = 15, pb = 28;
+  const cW = VW - pl - pr;  // 76
+  const cH = VH - pt - pb;  // 97
+  const maxFt = 35, maxLat = 35;
+  const cx0 = pl + cW / 2;
+
+  const pY = d   => pt + cH - Math.min(d / maxFt, 1.05) * cH;
+  const pX = lat => pl + ((lat + maxLat) / (2 * maxLat)) * cW;
+
   return (
-    <svg viewBox="0 0 100 100" className="w-full block">
-      <rect x="0" y="0" width="100" height="100" fill="#d4d4d0"/>
-      <circle cx="50" cy="50" r="42" fill="#e4e4e0"/>
-      <circle cx="50" cy="50" r="28" fill="#eeeeeb"/>
-      <circle cx="50" cy="50" r="14" fill="#f5f5f2"/>
-      <circle cx="50" cy="50" r="42" fill="none" stroke="#2a2a2a" strokeWidth="0.6"/>
-      <circle cx="50" cy="50" r="28" fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
-      <circle cx="50" cy="50" r="14" fill="none" stroke="#7a7a76" strokeWidth="0.4"/>
-      <text x="41" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">30ft</text>
-      <text x="27" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">20ft</text>
-      <text x="13" y="51.5" textAnchor="end" fontSize="3" fill="#555550" fontWeight="500">10ft</text>
-      <circle cx="50" cy="50" r="2" fill="#2a2a2a"/>
-      <line x1="50" y1="48.5" x2="50" y2="38" stroke="#1a1a1a" strokeWidth="0.8" strokeLinecap="round"/>
-      <polygon points="50,38 55.5,41 50,44" fill="#ef4444"/>
-      {shots.map((shot) => (
-        <circle key={shot.id} cx={shot.x} cy={shot.y} r={2} fill="#111827" opacity={0.85}/>
+    <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full block" style={{ background: '#f5f5f2' }}>
+      <rect x={pl} y={pt} width={cW} height={cH} fill="white" stroke="#e0e0dc" strokeWidth="0.5"/>
+
+      {[10, 20, 30].map(ft => (
+        <g key={ft}>
+          <line x1={pl} y1={pY(ft)} x2={pl + cW} y2={pY(ft)}
+            stroke="#d0d0cc" strokeWidth="0.4" strokeDasharray="2,2"/>
+          <text x={pl - 2} y={pY(ft) + 1.2} textAnchor="end" fontSize="4" fill="#6a6a66">{ft}ft</text>
+        </g>
       ))}
+
+      <line x1={cx0} y1={pt} x2={cx0} y2={pt + cH}
+        stroke="#a0a09a" strokeWidth="0.5" strokeDasharray="2,2"/>
+
+      <line x1={pl} y1={pt + cH} x2={pl + cW} y2={pt + cH} stroke="#2a2a2a" strokeWidth="0.7"/>
+      <line x1={pl} y1={pt}      x2={pl}       y2={pt + cH} stroke="#2a2a2a" strokeWidth="0.7"/>
+
+      <text x={pl + 2}      y={pt + cH + 9} textAnchor="start"  fontSize="4" fill="#555550">← Left</text>
+      <text x={cx0}         y={pt + cH + 9} textAnchor="middle" fontSize="4" fill="#555550">Pin</text>
+      <text x={pl + cW - 2} y={pt + cH + 9} textAnchor="end"    fontSize="4" fill="#555550">Right →</text>
+
+      <text fontSize="4" fill="#555550" fontWeight="500"
+        transform={`rotate(-90) translate(${-(pt + cH / 2)}, 9)`} textAnchor="middle">
+        Feet
+      </text>
+
+      {dots.map((d, i) => (
+        <circle key={i}
+          cx={Math.max(pl + 2, Math.min(pl + cW - 2, pX(d.lateral)))}
+          cy={Math.max(pt + 2, Math.min(pt + cH - 2, pY(d.dist)))}
+          r={2.5} fill="#111827" opacity={0.65}/>
+      ))}
+
+      {dots.length === 0 && (
+        <text x={VW / 2} y={VH / 2} textAnchor="middle" fontSize="6" fill="#9ca3af">No data</text>
+      )}
     </svg>
   );
 }
 
 // ---- Stat Card ----
 function StatCard({ label, value, color }) {
-  const colorMap = {
-    green: 'text-green-700',
-    blue: 'text-blue-600',
-    yellow: 'text-yellow-600',
-    purple: 'text-purple-600',
-    gray: 'text-gray-500',
-    sgPositive: 'text-green-600',
-    sgNegative: 'text-red-500',
-  };
+  const valueColor =
+    color === 'sgPositive' ? 'text-green-600' :
+    color === 'sgNegative' ? 'text-red-500'   :
+    'text-gray-900';
   return (
     <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-      <div className="text-xs text-gray-500 font-medium mb-1">{label}</div>
-      <div className={`text-2xl font-black ${colorMap[color] || 'text-gray-800'}`}>{value}</div>
+      <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+      <div className={`text-2xl font-black ${valueColor}`}>{value}</div>
     </div>
   );
 }

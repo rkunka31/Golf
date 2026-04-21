@@ -9,12 +9,14 @@ const MAX_R = 42;
 
 const RINGS = [{ r: 42, ft: 30 }, { r: 28, ft: 20 }, { r: 14, ft: 10 }];
 
+// Use getBoundingClientRect — reliable after page scroll (getScreenCTM is not)
 function getSvgCoords(svg, clientX, clientY) {
-  const pt = svg.createSVGPoint();
-  pt.x = clientX; pt.y = clientY;
-  const ctm = svg.getScreenCTM();
-  if (!ctm) return { x: CX, y: CY };
-  return pt.matrixTransform(ctm.inverse());
+  const rect = svg.getBoundingClientRect();
+  const vb   = svg.viewBox.baseVal;
+  return {
+    x: (clientX - rect.left) * (vb.width  / rect.width),
+    y: (clientY - rect.top)  * (vb.height / rect.height),
+  };
 }
 
 function getDistFt(shots) {
@@ -154,8 +156,10 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
         </div>
       )}
 
-      {/* SVG */}
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full block">
+      {/* SVG — max-width keeps it from being too large */}
+      <div className="flex justify-center bg-[#d4d4d0]">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', maxWidth: 300, display: 'block' }}>
         {/* outer background */}
         <rect x="0" y="0" width={W} height={H} fill="#d4d4d0"/>
 
@@ -209,6 +213,7 @@ export default function GreenDiagram({ shots, onShotsChange, readOnly }) {
             onDelete={(e) => handleDelete(e, shot.id)}/>
         ))}
       </svg>
+      </div>
 
       {/* launcher */}
       {!readOnly && (

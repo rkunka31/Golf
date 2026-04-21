@@ -1,11 +1,11 @@
 {
-  "name": "Golf Shot Tracker",
-  "short_name": "Golf Tracker",
-  "description": "Track your golf shots, scores, and improve your game",
+  "name": "Pinpoint",
+  "short_name": "Pinpoint",
+  "description": "Pinpoint your golf game — shot tracking, scores, and dispersion analysis",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f0f4f0",
-  "theme_color": "#166534",
+  "background_color": "#f5f5f2",
+  "theme_color": "#111827",
   "orientation": "portrait",
   "icons": [
     {
