@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pinpoint — Design Exploration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .pp-noscroll::-webkit-scrollbar { display: none; }
+    .pp-noscroll { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+/* ─────────────────────────────────────────────────────────────────────
+   THEMES
+───────────────────────────────────────────────────────────────────── */
+const THEMES = {
+  obsidian: {
+    key: 'obsidian',
+    name: 'Obsidian',
+    bg: '#0d0d0d',
+    surface: '#161616',
+    surface2: '#1e1e1e',
+    border: '#272727',
+    accent: '#22c55e',
+    accentSoft: 'rgba(34,197,94,0.12)',
+    accentGlow: 'rgba(34,197,94,0.22)',
+    text: '#f0f0f0',
+    textSub: '#777',
+    textFaint: '#333',
+    gold: '#f59e0b',
+    red: '#ef4444',
+    blue: '#60a5fa',
+    fwBg: '#090d07',
+    fwFairway: '#112010',
+    fwFairwayLight: '#183018',
+    grnBg: '#080d07',
+    grnOuter: '#143520',
+    grnMid: '#1a4828',
+    grnInner: '#216032',
+    grnCenter: '#27723c',
+    apprFill: '#0e1a0c',
+  },
+  carbon: {
+    key: 'carbon',
+    name: 'Carbon',
+    bg: '#111110',
+    surface: '#1c1c1a',
+    surface2: '#252521',
+    border: '#2d2d2a',
+    accent: '#4ade80',
+    accentSoft: 'rgba(74,222,128,0.10)',
+    accentGlow: 'rgba(74,222,128,0.20)',
+    text: '#f0efe8',
+    textSub: '#5a5a56',
+    textFaint: '#2d2d2a',
+    gold: '#f59e0b',
+    red: '#f87171',
+    blue: '#93c5fd',
+    fwBg: '#0c100a',
+    fwFairway: '#14200e',
+    fwFairwayLight: '#1c3015',
+    grnBg: '#0a0e08',
+    grnOuter: '#163a14',
+    grnMid: '#1d5020',
+    grnInner: '#24662b',
+    grnCenter: '#2b7c35',
+    apprFill: '#111a0e',
+  },
+  slate: {
+    key: 'slate',
+    name: 'Slate',
+    bg: '#0c1117',
+    surface: '#141c25',
+    surface2: '#1a2535',
+    border: '#1e2d3d',
+    accent: '#34d399',
+    accentSoft: 'rgba(52,211,153,0.10)',
+    accentGlow: 'rgba(52,211,153,0.20)',
+    text: '#e2e8f0',
+    textSub: '#4a5568',
+    textFaint: '#1a2535',
+    gold: '#fbbf24',
+    red: '#f87171',
+    blue: '#60a5fa',
+    fwBg: '#08110e',
+    fwFairway: '#0e2018',
+    fwFairwayLight: '#153025',
+    grnBg: '#070f0c',
+    grnOuter: '#10302a',
+    grnMid: '#164038',
+    grnInner: '#1c5045',
+    grnCenter: '#226052',
+    apprFill: '#0d1a15',
+  },
+};
+
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK DATA
+───────────────────────────────────────────────────────────────────── */
+const SCORE_TREND = [86, 85, 82, 88, 83, 81, 84, 82];
+const FAIRWAY_SHOTS = [
+  { id: 'f1', x: 50, y: 68, shotNumber: 1, shape: 'Straight' },
+  { id: 'f2', x: 46, y: 46, shotNumber: 2, shape: 'Draw' },
+  { id: 'f3', x: 53, y: 28, shotNumber: 3, shape: 'Fade' },
+];
+const GREEN_SHOTS = [
+  { id: 'g1', x: 50, y: 110, shotNumber: 1 },
+  { id: 'g2', x: 55, y: 30, shotNumber: 2 },
+  { id: 'g3', x: 51, y: 23, shotNumber: 3 },
+];
+const CLUBS = [
+  { club: 'Dr', avg: 247, count: 14 },
+  { club: '7i', avg: 158, count: 18 },
+  { club: 'PW', avg: 108, count: 22 },
+  { club: '54°', avg: 68, count: 12 },
+  { club: '9i', avg: 136, count: 15 },
+];
+const HOLE_SCORES = { 1:4,2:null,3:5,4:4,5:3,6:null,7:5,8:null,9:4 };
+const HOLE_PARS   = { 1:4,2:4,3:5,4:4,5:3,6:4,7:4,8:3,9:5 };
+
+/* ─────────────────────────────────────────────────────────────────────
+   UTILITY COMPONENTS
+───────────────────────────────────────────────────────────────────── */
+function StatusBar({ t }) {
+  return (
+    <div style={{ height:50, background:t.bg, display:'flex', alignItems:'flex-end',
+      paddingBottom:9, paddingLeft:24, paddingRight:20, position:'relative', flexShrink:0 }}>
+      <div style={{ position:'absolute', top:12, left:'50%', transform:'translateX(-50%)',
+        width:126, height:34, background:'#000', borderRadius:20 }} />
+      <span style={{ fontFamily:'Space Grotesk', fontSize:15, fontWeight:600,
+        color:t.text, letterSpacing:'-0.01em', position:'relative', zIndex:1 }}>9:41</span>
+      <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, position:'relative', zIndex:1 }}>
+        <svg width="17" height="11" viewBox="0 0 17 11">
+          {[0,1,2,3].map(i=>(
+            <rect key={i} x={i*4.5} y={11-(i+1)*2.5} width={3.5} height={(i+1)*2.5}
+              rx={0.8} fill={t.text} opacity={i<3?1:0.3}/>
+          ))}
+        </svg>
+        <svg width="15" height="11" viewBox="0 0 15 11">
+          <circle cx="7.5" cy="9.5" r="1.5" fill={t.text}/>
+          <path d="M4.5 7C5.6 5.8 6.5 5 7.5 5s1.9.8 3 2" stroke={t.text} strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+          <path d="M2 4.5C4 2.5 5.5 1 7.5 1s3.5 1.5 5.5 3.5" stroke={t.text} strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.4"/>
+        </svg>
+        <div style={{ display:'flex', alignItems:'center', gap:2 }}>
+          <div style={{ width:24, height:11, border:`1.5px solid ${t.text}`, borderRadius:3,
+            padding:'1.5px', display:'flex', alignItems:'stretch' }}>
+            <div style={{ width:'80%', background:t.text, borderRadius:1 }}/>
+          </div>
+          <div style={{ width:2, height:4, background:t.text, borderRadius:1, opacity:0.5 }}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BottomNav({ t, active }) {
+  const tabs = [
+    { id:'home', label:'Home' },
+    { id:'round', label:'Round' },
+    { id:'analysis', label:'Analysis' },
+  ];
+  return (
+    <div style={{ height:82, background:t.bg, borderTop:`1px solid ${t.border}`,
+      display:'flex', paddingBottom:18, flexShrink:0 }}>
+      {tabs.map(tab => {
+        const on = tab.id === active;
+        return (
+          <div key={tab.id} style={{ flex:1, display:'flex', flexDirection:'column',
+            alignItems:'center', justifyContent:'center', gap:4, paddingTop:10 }}>
+            <NavIcon id={tab.id} on={on} accent={t.accent} sub={t.textSub} />
+            <span style={{ fontSize:10, fontWeight:600, letterSpacing:'0.04em',
+              color:on?t.accent:t.textSub, textTransform:'uppercase' }}>{tab.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NavIcon({ id, on, accent, sub }) {
+  const c = on ? accent : sub;
+  if (id === 'home') return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={c}>
+      <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z"/>
+      <path d="M12 5.432l8.159 8.159v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198L12 5.432z"/>
+    </svg>
+  );
+  if (id === 'round') return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round">
+      <path d="M3 3v18M3 6l1.5-.5a9 9 0 016 0 9 9 0 006 0L18 5v10l-1.5.5a9 9 0 01-6 0 9 9 0 00-6 0L3 16"/>
+    </svg>
+  );
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={c}>
+      <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"/>
+    </svg>
+  );
+}
+
+function RingChart({ value, max=100, color, bg='rgba(255,255,255,0.07)', size=56, sw=5.5 }) {
+  const r = (size - sw) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(value / max, 1);
+  return (
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+        style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg} strokeWidth={sw}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
+          strokeWidth={sw} strokeLinecap="round"
+          strokeDasharray={`${circ*pct} ${circ*(1-pct)}`}/>
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:1 }}>
+        <span style={{ fontSize:12, fontWeight:700, color:'#fff', lineHeight:1,
+          fontFamily:'Space Mono, monospace' }}>{value}%</span>
+      </div>
+    </div>
+  );
+}
+
+function SparkLine({ t, scores }) {
+  const W = 210, H = 38;
+  const min = Math.min(...scores), max = Math.max(...scores), range = max - min || 1;
+  const pts = scores.map((s,i)=>({
+    x: (i/(scores.length-1))*W,
+    y: H - 4 - ((s-min)/range)*(H-8),
+  }));
+  const poly = pts.map(p=>`${p.x},${p.y}`).join(' ');
+  return (
+    <svg width={W} height={H} style={{ overflow:'visible' }}>
+      <defs>
+        <linearGradient id={`spark-${t.key}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={t.accent} stopOpacity="0.5"/>
+          <stop offset="100%" stopColor={t.accent}/>
+        </linearGradient>
+      </defs>
+      <polyline points={poly} fill="none" stroke={`url(#spark-${t.key})`}
+        strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+      {pts.map((p,i)=>(
+        <circle key={i} cx={p.x} cy={p.y}
+          r={i===pts.length-1?3.5:2}
+          fill={i===pts.length-1?t.accent:'rgba(255,255,255,0.3)'}/>
+      ))}
+    </svg>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   DARK FAIRWAY MAP
+───────────────────────────────────────────────────────────────────── */
+const FW_MARKERS = [
+  {yd:300,y:19},{yd:250,y:33},{yd:200,y:47},{yd:150,y:62},{yd:100,y:76},{yd:50,y:90},
+];
+const SHAPE_CURVE = { Straight:0, Draw:5, Fade:-5, Hook:12, Slice:-12 };
+const FW_OVL = { cx:50, cy:55, rx:17, ry:38 };
+
+function fwCurveCP(x1,y1,x2,y2,curv) {
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  if(!curv) return {cpx:mx,cpy:my};
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy)||1;
+  return {cpx:mx+(dy/len)*curv, cpy:my+(-dx/len)*curv};
+}
+
+function DarkFairwayMap({ t, shots }) {
+  const sorted = [...shots].sort((a,b)=>a.shotNumber-b.shotNumber);
+  const gradId = `fw-grad-${t.key}`;
+  return (
+    <div style={{ background:t.fwBg, display:'flex', justifyContent:'center' }}>
+      <svg viewBox="0 0 100 108" style={{ width:'100%', maxWidth:310, display:'block' }}>
+        <defs>
+          <radialGradient id={gradId} cx="50%" cy="40%" r="60%">
+            <stop offset="0%" stopColor={t.fwFairwayLight}/>
+            <stop offset="100%" stopColor={t.fwFairway}/>
+          </radialGradient>
+          <filter id={`glow-${t.key}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.8" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {/* Background rough */}
+        <rect x="0" y="0" width="100" height="108" fill={t.fwBg}/>
+
+        {/* Fairway oval */}
+        <ellipse cx={FW_OVL.cx} cy={FW_OVL.cy} rx={FW_OVL.rx} ry={FW_OVL.ry}
+          fill={`url(#${gradId})`}/>
+        <ellipse cx={FW_OVL.cx} cy={FW_OVL.cy} rx={FW_OVL.rx} ry={FW_OVL.ry}
+          fill="none" stroke={t.accent} strokeWidth="0.5" opacity="0.25"/>
+
+        {/* Distance markers */}
+        {FW_MARKERS.map(({yd,y})=>{
+          const dy2 = y - FW_OVL.cy;
+          const chord = FW_OVL.rx * Math.sqrt(Math.max(0, 1-(dy2*dy2)/(FW_OVL.ry*FW_OVL.ry)));
+          return (
+            <g key={yd}>
+              <line x1={FW_OVL.cx-chord} y1={y} x2={FW_OVL.cx+chord} y2={y}
+                stroke={t.accent} strokeWidth="0.3" opacity="0.2" strokeDasharray="1.5,2"/>
+              <text x={FW_OVL.cx+chord+1.5} y={y+1.3}
+                fontSize="3.2" fill={t.accent} opacity="0.45" fontWeight="600"
+                fontFamily="Space Mono, monospace">{yd}</text>
+            </g>
+          );
+        })}
+
+        {/* Shot paths */}
+        {sorted.length > 0 && (()=>{
+          const s = sorted[0];
+          const curv = SHAPE_CURVE[s.shape]||0;
+          const {cpx,cpy} = fwCurveCP(50, 96.5, s.x, s.y, curv);
+          return <path d={`M 50,96.5 Q ${cpx},${cpy} ${s.x},${s.y}`}
+            stroke={t.accent} fill="none" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.7"/>;
+        })()}
+        {sorted.length > 1 && sorted.map((shot,i)=>{
+          if(i===0) return null;
+          const prev = sorted[i-1];
+          const curv = SHAPE_CURVE[shot.shape]||0;
+          const {cpx,cpy} = fwCurveCP(prev.x,prev.y,shot.x,shot.y,curv);
+          return <path key={shot.id}
+            d={`M ${prev.x},${prev.y} Q ${cpx},${cpy} ${shot.x},${shot.y}`}
+            stroke={t.accent} fill="none" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.7"/>;
+        })}
+
+        {/* Shot markers */}
+        {shots.map(shot=>(
+          <g key={shot.id} transform={`translate(${shot.x},${shot.y})`}
+            filter={`url(#glow-${t.key})`}>
+            <circle r={5.5} fill={t.accentGlow}/>
+            <circle r={3.8} fill={t.accent}/>
+            <text x={0} y={1.4} textAnchor="middle" fontSize="3.2" fontWeight="700"
+              fill={t.bg} fontFamily="Space Grotesk, sans-serif">{shot.shotNumber}</text>
+          </g>
+        ))}
+
+        {/* Tee */}
+        <circle cx="50" cy="100" r="3.5" fill={t.accent} opacity="0.9"/>
+        <circle cx="50" cy="100" r="1.4" fill={t.bg} opacity="0.8"/>
+      </svg>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   DARK GREEN MAP
+───────────────────────────────────────────────────────────────────── */
+const GRN = { cx:50, cy:25, r:20 };
+const APPR_TOP = GRN.cy + GRN.r; // 45
+const APPR_BOT = 195;
+const APPR_PATH_D = `M 30,${APPR_TOP} L 12,${APPR_BOT} Q 50,207 88,${APPR_BOT} L 70,${APPR_TOP} Z`;
+const APPR_MARKS = Array.from({length:10},(_,i)=>({
+  yd:(i+1)*25,
+  y:APPR_TOP+(i+1)*25*((APPR_BOT-APPR_TOP)/250),
+  labeled:((i+1)*25)%50===0,
+}));
+function apprEdge(y) {
+  const t2=Math.max(0,Math.min(1,(y-APPR_TOP)/(APPR_BOT-APPR_TOP)));
+  return { lx:30+(12-30)*t2, rx:70+(88-70)*t2 };
+}
+
+function DarkGreenMap({ t, shots }) {
+  const sorted = [...shots].sort((a,b)=>a.shotNumber-b.shotNumber);
+  const gradId = `grn-${t.key}`;
+  return (
+    <div style={{ background:t.grnBg, display:'flex', justifyContent:'center' }}>
+      <svg viewBox="0 0 100 210" style={{ width:'100%', maxWidth:240, display:'block' }}>
+        <defs>
+          <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={t.grnCenter}/>
+            <stop offset="55%" stopColor={t.grnInner}/>
+            <stop offset="80%" stopColor={t.grnMid}/>
+            <stop offset="100%" stopColor={t.grnOuter}/>
+          </radialGradient>
+          <filter id={`grn-glow-${t.key}`} x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {/* Rough */}
+        <rect x="0" y="0" width="100" height="210" fill={t.grnBg}/>
+        {/* Approach corridor */}
+        <path d={APPR_PATH_D} fill={t.apprFill}/>
+        <path d={APPR_PATH_D} fill="none" stroke={t.accent} strokeWidth="0.4" opacity="0.12"/>
+
+        {/* Yardage lines */}
+        {APPR_MARKS.map(({yd,y,labeled})=>{
+          const {lx,rx}=apprEdge(y);
+          return (
+            <g key={yd}>
+              <line x1={lx} y1={y} x2={rx} y2={y} stroke={t.accent}
+                strokeWidth={labeled?.5:.3} strokeDasharray="1.5,2"
+                opacity={labeled?.28:.14}/>
+              {labeled && <text x={rx+1.5} y={y+1.2} fontSize="3" fill={t.accent}
+                opacity="0.45" fontWeight="600" fontFamily="Space Mono">{yd}</text>}
+            </g>
+          );
+        })}
+
+        {/* Bunkers */}
+        <ellipse cx="30" cy="44" rx="11" ry="5" fill={t.bg}
+          stroke={t.border} strokeWidth="0.5" transform="rotate(-30 30 44)" opacity="0.7"/>
+        <ellipse cx="70" cy="44" rx="11" ry="5" fill={t.bg}
+          stroke={t.border} strokeWidth="0.5" transform="rotate(30 70 44)" opacity="0.7"/>
+
+        {/* Green */}
+        <circle cx={GRN.cx} cy={GRN.cy} r={GRN.r} fill={`url(#${gradId})`}/>
+        {/* Distance rings */}
+        {[1, 2/3, 1/3].map((frac,i)=>(
+          <circle key={i} cx={GRN.cx} cy={GRN.cy} r={GRN.r*frac} fill="none"
+            stroke={t.accent} strokeWidth="0.4" opacity={0.35-i*0.1}/>
+        ))}
+        {/* Distance labels */}
+        <text x={GRN.cx+GRN.r-0.5} y={GRN.cy-2} textAnchor="end" fontSize="2.8"
+          fill={t.accent} opacity="0.5" fontWeight="600" fontFamily="Space Mono">30ft</text>
+        <text x={GRN.cx+GRN.r*2/3-0.5} y={GRN.cy-1} textAnchor="end" fontSize="2.6"
+          fill={t.accent} opacity="0.45" fontWeight="600" fontFamily="Space Mono">20ft</text>
+        <text x={GRN.cx+GRN.r/3-0.5} y={GRN.cy-1} textAnchor="end" fontSize="2.4"
+          fill={t.accent} opacity="0.4" fontWeight="600" fontFamily="Space Mono">10ft</text>
+
+        {/* Pin */}
+        <line x1={GRN.cx} y1={GRN.cy-1.5} x2={GRN.cx} y2={GRN.cy-10}
+          stroke={t.text} strokeWidth="0.7" strokeLinecap="round" opacity="0.9"/>
+        <polygon points={`${GRN.cx},${GRN.cy-10} ${GRN.cx+4.5},${GRN.cy-7.5} ${GRN.cx},${GRN.cy-5}`}
+          fill="#ef4444"/>
+        <circle cx={GRN.cx} cy={GRN.cy} r={1.5} fill={t.grnCenter}
+          stroke={t.accent} strokeWidth="0.6" opacity="0.8"/>
+
+        {/* Shot paths */}
+        {sorted.length > 1 && sorted.map((shot,i)=>{
+          if(i===0) return null;
+          const prev = sorted[i-1];
+          return <line key={shot.id} x1={prev.x} y1={prev.y} x2={shot.x} y2={shot.y}
+            stroke={t.accent} strokeWidth="0.8" strokeDasharray="2,2" opacity="0.7"/>;
+        })}
+
+        {/* Shot markers */}
+        {shots.map(shot=>(
+          <g key={shot.id} transform={`translate(${shot.x},${shot.y})`}
+            filter={`url(#grn-glow-${t.key})`}>
+            <circle r={5} fill={t.accentGlow}/>
+            <circle r={3.2} fill={t.accent}/>
+            <text x={0} y={1.2} textAnchor="middle" fontSize="2.8" fontWeight="700"
+              fill={t.bg} fontFamily="Space Grotesk">{shot.shotNumber}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   PHONE FRAME
+───────────────────────────────────────────────────────────────────── */
+function PhoneFrame({ children }) {
+  return (
+    <div style={{ width:390, height:844, borderRadius:46, background:'#1a1a1a',
+      padding:11,
+      boxShadow:'0 48px 96px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07), inset 0 0 0 1px rgba(255,255,255,0.03)',
+      position:'relative', flexShrink:0 }}>
+      {/* Side buttons */}
+      {[{side:'left',top:115,h:28},{side:'left',top:158,h:58},{side:'left',top:228,h:58},
+        {side:'right',top:154,h:80}].map((b,i)=>(
+        <div key={i} style={{ position:'absolute', [b.side]:-3, top:b.top, width:3, height:b.h,
+          background:'#2a2a2a', borderRadius:b.side==='left'?'2px 0 0 2px':'0 2px 2px 0' }}/>
+      ))}
+      <div style={{ width:'100%', height:'100%', borderRadius:36, overflow:'hidden', background:'#000' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   SCREEN 1: ANALYSIS DASHBOARD
+───────────────────────────────────────────────────────────────────── */
+function AnalysisScreen({ t }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:t.bg,
+      fontFamily:'Space Grotesk, sans-serif', overflow:'hidden' }}>
+      <StatusBar t={t}/>
+
+      {/* Header */}
+      <div style={{ padding:'10px 20px 12px', borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <h1 style={{ fontSize:24, fontWeight:700, color:t.text, letterSpacing:'-0.03em', lineHeight:1 }}>
+              Analysis
+            </h1>
+            <p style={{ fontSize:11, color:t.textSub, marginTop:3, fontWeight:500 }}>12 rounds · All Courses</p>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            {['All','Season','Course'].map((f,i)=>(
+              <div key={f} style={{ padding:'5px 10px', borderRadius:20,
+                background:i===1?t.accentSoft:'transparent',
+                border:`1px solid ${i===1?t.accentGlow:t.border}`,
+                fontSize:11, fontWeight:600, color:i===1?t.accent:t.textSub }}>
+                {f}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex',
+        flexDirection:'column', gap:10 }} className="pp-noscroll">
+
+        {/* Hero stat row */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, padding:'14px 16px' }}>
+            <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+              letterSpacing:'0.08em', marginBottom:8 }}>Avg Score</div>
+            <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+              <span style={{ fontSize:34, fontWeight:700, color:t.text, lineHeight:1,
+                fontFamily:'Space Mono, monospace', letterSpacing:'-0.04em' }}>84.2</span>
+            </div>
+            <div style={{ fontSize:11, color:t.textSub, marginTop:4 }}>Best: <span style={{ color:t.accent, fontWeight:700 }}>79</span></div>
+          </div>
+          <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, padding:'14px 16px' }}>
+            <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+              letterSpacing:'0.08em', marginBottom:8 }}>Handicap</div>
+            <div style={{ fontSize:34, fontWeight:700, color:t.accent, lineHeight:1,
+              fontFamily:'Space Mono, monospace', letterSpacing:'-0.04em' }}>12.4</div>
+            <div style={{ fontSize:11, color:t.textSub, marginTop:4 }}>Est. Index</div>
+          </div>
+        </div>
+
+        {/* Ring chart row */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          {[
+            { label:'Fairways Hit', pct:58, color:t.accent, sub:'7/12 par-4/5' },
+            { label:'Greens in Reg', pct:34, color:t.blue, sub:'6/18 holes' },
+          ].map(item=>(
+            <div key={item.label} style={{ background:t.surface, border:`1px solid ${t.border}`,
+              borderRadius:16, padding:'14px 16px' }}>
+              <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+                letterSpacing:'0.08em', marginBottom:10 }}>{item.label}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <RingChart value={item.pct} color={item.color} bg={`rgba(255,255,255,0.06)`}/>
+                <div>
+                  <div style={{ fontSize:22, fontWeight:700, color:t.text, lineHeight:1,
+                    fontFamily:'Space Mono', letterSpacing:'-0.03em' }}>{item.pct}%</div>
+                  <div style={{ fontSize:10, color:t.textSub, marginTop:3 }}>{item.sub}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Strokes Gained */}
+        <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+            letterSpacing:'0.08em', marginBottom:12 }}>Strokes Gained</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {[
+              { label:'Off Tee', val:-0.2 },
+              { label:'Approach', val:0.6 },
+              { label:'Around Green', val:0.1 },
+              { label:'Putting', val:-0.4 },
+            ].map(({label,val})=>{
+              const isPos = val >= 0;
+              const barW = Math.min(Math.abs(val)/1.5, 1) * 100;
+              const barColor = isPos ? t.accent : t.red;
+              return (
+                <div key={label} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11, color:t.textSub, width:80, flexShrink:0, fontWeight:500 }}>{label}</span>
+                  <div style={{ flex:1, height:5, background:'rgba(255,255,255,0.05)',
+                    borderRadius:3, overflow:'hidden',
+                    display:'flex', justifyContent:isPos?'flex-start':'flex-end' }}>
+                    <div style={{ width:`${barW}%`, height:'100%', background:barColor, borderRadius:3 }}/>
+                  </div>
+                  <span style={{ fontSize:12, fontWeight:700, color:barColor, width:38,
+                    textAlign:'right', fontFamily:'Space Mono, monospace' }}>
+                    {isPos?`+${val.toFixed(1)}`:val.toFixed(1)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Putt avg + to-par */}
+          <div style={{ display:'flex', gap:0, marginTop:14, paddingTop:12,
+            borderTop:`1px solid ${t.border}` }}>
+            {[
+              { label:'Avg Putts', val:'1.8', color:t.text },
+              { label:'Avg To Par', val:'+4.2', color:t.red },
+              { label:'Penalty/Rnd', val:'0.8', color:t.textSub },
+            ].map(item=>(
+              <div key={item.label} style={{ flex:1, textAlign:'center' }}>
+                <div style={{ fontSize:18, fontWeight:700, color:item.color,
+                  fontFamily:'Space Mono', lineHeight:1 }}>{item.val}</div>
+                <div style={{ fontSize:9, color:t.textSub, marginTop:3, textTransform:'uppercase',
+                  letterSpacing:'0.05em' }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Score Trend */}
+        <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, padding:'14px 16px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+              letterSpacing:'0.08em' }}>Score Trend</div>
+            <div style={{ display:'flex', gap:10 }}>
+              <span style={{ fontSize:10, color:t.textSub }}>Best&nbsp;
+                <span style={{ color:t.accent, fontWeight:700, fontFamily:'Space Mono' }}>79</span>
+              </span>
+              <span style={{ fontSize:10, color:t.textSub }}>Latest&nbsp;
+                <span style={{ color:t.text, fontWeight:700, fontFamily:'Space Mono' }}>82</span>
+              </span>
+            </div>
+          </div>
+          <SparkLine t={t} scores={SCORE_TREND}/>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+            <span style={{ fontSize:9, color:t.textFaint, fontFamily:'Space Mono' }}>Jan</span>
+            <span style={{ fontSize:9, color:t.textFaint, fontFamily:'Space Mono' }}>Apr</span>
+          </div>
+        </div>
+
+      </div>
+      <BottomNav t={t} active="analysis"/>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   SCREEN 2: FAIRWAY DIAGRAM (HOLE VIEW)
+───────────────────────────────────────────────────────────────────── */
+function FairwayScreen({ t }) {
+  const [activeHole, setActiveHole] = useState(7);
+  const TABS = Array.from({length:9},(_,i)=>i+1);
+
+  function holeChip(h) {
+    const s = HOLE_SCORES[h], p = HOLE_PARS[h];
+    const isActive = h === activeHole;
+    if (isActive) return { bg:'#fff', numColor:'#111', scoreColor:'#111', border:'transparent' };
+    if (!s) return { bg:t.surface2, numColor:t.textFaint, scoreColor:t.textFaint, border:t.border };
+    const d = s - p;
+    if (d<=-2) return { bg:'#78350f', numColor:'#fde68a', scoreColor:'#fde68a', border:'#f59e0b' };
+    if (d===-1) return { bg:'#7f1d1d', numColor:'#fca5a5', scoreColor:'#fca5a5', border:'#ef4444' };
+    if (d===0)  return { bg:t.accentSoft, numColor:t.accent, scoreColor:t.accent, border:t.accent };
+    if (d===1)  return { bg:'rgba(59,130,246,0.18)', numColor:'#93c5fd', scoreColor:'#93c5fd', border:'#3b82f6' };
+    return { bg:t.surface2, numColor:t.textSub, scoreColor:t.textSub, border:t.border };
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:t.bg,
+      fontFamily:'Space Grotesk, sans-serif', overflow:'hidden' }}>
+      <StatusBar t={t}/>
+
+      {/* Round header */}
+      <div style={{ background:t.surface, padding:'10px 16px 10px',
+        borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke={t.textSub} strokeWidth="2" strokeLinecap="round">
+              <path d="M15 19l-7-7 7-7"/>
+            </svg>
+            <div>
+              <div style={{ fontSize:15, fontWeight:700, color:t.text, lineHeight:1.2 }}>Shawnee GC</div>
+              <div style={{ fontSize:11, color:t.textSub, marginTop:1 }}>Apr 20 · Blue Tees · Sunny</div>
+            </div>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:28, fontWeight:800, color:t.text, lineHeight:1,
+              fontFamily:'Space Mono', letterSpacing:'-0.04em' }}>38</div>
+            <div style={{ fontSize:11, color:t.red, fontWeight:600 }}>+2 · F9</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Hole tab strip */}
+      <div style={{ background:t.bg, padding:'8px 10px', display:'flex', gap:5, overflowX:'auto',
+        flexShrink:0, borderBottom:`1px solid ${t.border}` }} className="pp-noscroll">
+        {TABS.map(h=>{
+          const chip = holeChip(h);
+          return (
+            <div key={h} onClick={()=>setActiveHole(h)} style={{ flexShrink:0, width:34, height:34,
+              borderRadius:9, display:'flex', flexDirection:'column', alignItems:'center',
+              justifyContent:'center', gap:0, cursor:'pointer',
+              background:chip.bg, border:`1px solid ${chip.border}` }}>
+              <span style={{ fontSize:9, lineHeight:1, color:chip.numColor, fontWeight:600 }}>{h}</span>
+              {HOLE_SCORES[h] && <span style={{ fontSize:12, lineHeight:1.1, color:chip.scoreColor,
+                fontWeight:800, fontFamily:'Space Mono' }}>{HOLE_SCORES[h]}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* KPI compact panel */}
+      <div style={{ background:t.surface, padding:'10px 14px',
+        borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:9 }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+            <span style={{ fontSize:38, fontWeight:800, color:t.accent, fontFamily:'Space Mono',
+              lineHeight:1, letterSpacing:'-0.04em' }}>7</span>
+            <span style={{ fontSize:12, color:t.textSub, fontWeight:600, textTransform:'uppercase',
+              letterSpacing:'0.06em' }}>Hole · Par 4</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ background:'rgba(59,130,246,0.2)', borderRadius:10,
+              padding:'6px 12px', display:'flex', alignItems:'baseline', gap:5 }}>
+              <span style={{ fontSize:22, fontWeight:800, color:'#93c5fd',
+                fontFamily:'Space Mono' }}>5</span>
+              <span style={{ fontSize:11, color:'#93c5fd', opacity:0.7 }}>+1</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:9 }}>
+          {[
+            {label:'PUTTS', val:'2', color:t.text},
+            {label:'FW HIT', val:'YES', color:t.accent},
+            {label:'PENALTY', val:'0', color:t.textSub},
+            {label:'APPROACH', val:'155y', color:t.text},
+          ].map(kpi=>(
+            <div key={kpi.label} style={{ background:t.surface2, border:`1px solid ${t.border}`,
+              borderRadius:10, padding:'7px 4px', textAlign:'center' }}>
+              <div style={{ fontSize:8, color:t.textSub, textTransform:'uppercase',
+                letterSpacing:'0.05em', marginBottom:3 }}>{kpi.label}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:kpi.color,
+                fontFamily:'Space Mono', lineHeight:1 }}>{kpi.val}</div>
+            </div>
+          ))}
+        </div>
+        {/* Club chips */}
+        <div style={{ display:'flex', gap:5, overflowX:'auto' }} className="pp-noscroll">
+          {['Dr','3W','4i','5i','6i','7i','8i','9i','PW','50°','54°'].map(club=>(
+            <div key={club} style={{ flexShrink:0, padding:'5px 10px', borderRadius:8,
+              background:club==='7i'?t.accent:t.surface2,
+              border:`1px solid ${club==='7i'?t.accent:t.border}`,
+              fontSize:11, fontWeight:700,
+              color:club==='7i'?t.bg:t.textSub }}>{club}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fairway diagram */}
+      <div style={{ background:t.fwBg, padding:'7px 16px', display:'flex',
+        alignItems:'center', gap:10, borderBottom:`1px solid rgba(255,255,255,0.05)`,
+        flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          <svg width="9" height="12" viewBox="0 0 12 14" fill="none">
+            <path d="M6 0C3.24 0 1 2.24 1 5C1 8.5 6 14 6 14C6 14 11 8.5 11 5C11 2.24 8.76 0 6 0Z" fill={t.accent}/>
+            <circle cx="6" cy="5" r="2" fill={t.bg}/>
+          </svg>
+          <span style={{ fontSize:18, fontWeight:700, color:t.text, fontFamily:'Space Mono',
+            letterSpacing:'-0.03em' }}>187</span>
+          <span style={{ fontSize:10, color:t.textSub, fontWeight:600 }}>YDS</span>
+        </div>
+        <div style={{ width:1, height:14, background:t.border }}/>
+        <span style={{ fontSize:11, color:t.textSub, fontWeight:600 }}>3 SHOTS</span>
+        <div style={{ marginLeft:'auto', display:'flex', gap:5 }}>
+          {['Straight','Draw','Fade'].map((s,i)=>(
+            <span key={s} style={{ fontSize:10, fontWeight:600,
+              padding:'3px 8px', borderRadius:20,
+              background:s==='Fade'?'rgba(217,119,6,0.18)':t.surface2,
+              color:s==='Fade'?'#d97706':t.textSub,
+              border:`1px solid ${s==='Fade'?'rgba(217,119,6,0.5)':t.border}` }}>{s}</span>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex:1, overflow:'hidden' }}>
+        <DarkFairwayMap t={t} shots={FAIRWAY_SHOTS}/>
+      </div>
+
+      <BottomNav t={t} active="round"/>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   SCREEN 3: GREEN & APPROACH / SHOT ANALYSIS
+───────────────────────────────────────────────────────────────────── */
+function GreenScreen({ t }) {
+  const maxAvg = Math.max(...CLUBS.map(c=>c.avg));
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:t.bg,
+      fontFamily:'Space Grotesk, sans-serif', overflow:'hidden' }}>
+      <StatusBar t={t}/>
+
+      {/* Header */}
+      <div style={{ padding:'10px 18px 12px', background:t.surface,
+        borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:11, color:t.textSub, textTransform:'uppercase',
+              letterSpacing:'0.08em', fontWeight:600 }}>Shot Analysis</div>
+            <div style={{ fontSize:20, fontWeight:700, color:t.text, marginTop:2,
+              letterSpacing:'-0.02em' }}>Approach & Green</div>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            {['All','Round','Hole'].map((f,i)=>(
+              <div key={f} style={{ padding:'4px 10px', borderRadius:20,
+                background:i===0?t.accentSoft:'transparent',
+                border:`1px solid ${i===0?t.accentGlow:t.border}`,
+                fontSize:10, fontWeight:700, color:i===0?t.accent:t.textSub }}>{f}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main: green map + key stats */}
+      <div style={{ display:'flex', flex:'0 0 auto', borderBottom:`1px solid ${t.border}` }}>
+        {/* Green diagram */}
+        <div style={{ width:'52%', overflow:'hidden', background:t.grnBg }}>
+          <DarkGreenMap t={t} shots={GREEN_SHOTS}/>
+        </div>
+
+        {/* Stats */}
+        <div style={{ flex:1, padding:'12px 12px 12px 10px', display:'flex',
+          flexDirection:'column', gap:8, borderLeft:`1px solid ${t.border}`, background:t.bg }}>
+          <div style={{ fontSize:9, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+            letterSpacing:'0.08em' }}>Green Stats</div>
+          {[
+            { label:'Putt Distance', val:'18 ft', accent:false },
+            { label:'1-Putt Rate', val:'38%', accent:true },
+            { label:'Up & Down', val:'42%', accent:false },
+            { label:'Scramble', val:'55%', accent:false },
+            { label:'GIR', val:'34%', accent:false },
+          ].map(({label,val,accent})=>(
+            <div key={label} style={{ background:t.surface2, border:`1px solid ${t.border}`,
+              borderRadius:10, padding:'7px 10px' }}>
+              <div style={{ fontSize:9, color:t.textSub, textTransform:'uppercase',
+                letterSpacing:'0.05em', lineHeight:1 }}>{label}</div>
+              <div style={{ fontSize:18, fontWeight:700, color:accent?t.accent:t.text,
+                fontFamily:'Space Mono', lineHeight:1.25, letterSpacing:'-0.02em' }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Club distances */}
+      <div style={{ flex:1, background:t.surface, padding:'12px 16px', overflowY:'auto' }}
+        className="pp-noscroll">
+        <div style={{ fontSize:10, fontWeight:600, color:t.textSub, textTransform:'uppercase',
+          letterSpacing:'0.08em', marginBottom:11 }}>Club Distances</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+          {CLUBS.map(({club,avg,count})=>(
+            <div key={club}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:t.text, width:28,
+                  fontFamily:'Space Mono', flexShrink:0 }}>{club}</span>
+                <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.05)',
+                  borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ width:`${(avg/maxAvg)*100}%`, height:'100%',
+                    background:`linear-gradient(90deg, ${t.accent}cc, ${t.accent})`,
+                    borderRadius:3 }}/>
+                </div>
+                <span style={{ fontSize:13, fontWeight:700, color:t.text, width:38,
+                  textAlign:'right', fontFamily:'Space Mono', letterSpacing:'-0.02em' }}>{avg}</span>
+                <span style={{ fontSize:10, color:t.textSub, width:22,
+                  fontFamily:'Space Mono' }}>×{count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <BottomNav t={t} active="analysis"/>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   ROOT APP
+───────────────────────────────────────────────────────────────────── */
+function App() {
+  const { useTweaks, TweaksPanel, TweakSection, TweakRadio } = window;
+
+  const [tweaks, setTweak] = useTweaks(/*EDITMODE-BEGIN*/{
+    "themeA": "obsidian",
+    "themeB": "obsidian",
+    "themeC": "slate"
+  }/*EDITMODE-END*/);
+
+  const tA = THEMES[tweaks.themeA] || THEMES.obsidian;
+  const tB = THEMES[tweaks.themeB] || THEMES.carbon;
+  const tC = THEMES[tweaks.themeC] || THEMES.slate;
+  const THEME_OPTS = ['obsidian','carbon','slate'];
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="s1" title="Analysis Dashboard">
+          <DCArtboard id="a1" label={`A · ${tA.name}`} width={390} height={844}>
+            <PhoneFrame><AnalysisScreen t={tA}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="a2" label={`B · ${tB.name}`} width={390} height={844}>
+            <PhoneFrame><AnalysisScreen t={tB}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="a3" label={`C · ${tC.name}`} width={390} height={844}>
+            <PhoneFrame><AnalysisScreen t={tC}/></PhoneFrame>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="s2" title="Hole View — Fairway Diagram">
+          <DCArtboard id="b1" label={`A · ${tA.name}`} width={390} height={844}>
+            <PhoneFrame><FairwayScreen t={tA}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="b2" label={`B · ${tB.name}`} width={390} height={844}>
+            <PhoneFrame><FairwayScreen t={tB}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="b3" label={`C · ${tC.name}`} width={390} height={844}>
+            <PhoneFrame><FairwayScreen t={tC}/></PhoneFrame>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="s3" title="Shot Analysis — Approach &amp; Green">
+          <DCArtboard id="c1" label={`A · ${tA.name}`} width={390} height={844}>
+            <PhoneFrame><GreenScreen t={tA}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="c2" label={`B · ${tB.name}`} width={390} height={844}>
+            <PhoneFrame><GreenScreen t={tB}/></PhoneFrame>
+          </DCArtboard>
+          <DCArtboard id="c3" label={`C · ${tC.name}`} width={390} height={844}>
+            <PhoneFrame><GreenScreen t={tC}/></PhoneFrame>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel>
+        <TweakSection title="Column A Theme">
+          <TweakRadio id="themeA" options={THEME_OPTS} value={tweaks.themeA}
+            onChange={v=>setTweak('themeA',v)}/>
+        </TweakSection>
+        <TweakSection title="Column B Theme">
+          <TweakRadio id="themeB" options={THEME_OPTS} value={tweaks.themeB}
+            onChange={v=>setTweak('themeB',v)}/>
+        </TweakSection>
+        <TweakSection title="Column C Theme">
+          <TweakRadio id="themeC" options={THEME_OPTS} value={tweaks.themeC}
+            onChange={v=>setTweak('themeC',v)}/>
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
